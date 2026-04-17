@@ -1,0 +1,52 @@
+name: PR Safety Checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.13"]
+
+    env:
+      STICKER_HUB_DATA_DIR: ${{ runner.temp }}/stickerhub-ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install ruff
+
+      - name: Verify dependency health
+        run: python -m pip check
+
+      - name: Syntax and import compile checks
+        run: python -m compileall -q main.py sticker_hub scripts tests
+
+      - name: Ruff lint (correctness rules)
+        run: python -m ruff check --select E9,F63,F7,F82 main.py sticker_hub scripts tests
+
+      - name: Run smoke test
+        run: python -u tests/smoke_test.py
+
+
