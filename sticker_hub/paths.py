@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import sys
 from pathlib import Path
 
 APP_DIR_NAME = "StickerHub"
@@ -35,4 +36,16 @@ def ensure_stickers_json(default_source: Path | None = None) -> Path:
         target.write_text("{}\n", encoding="utf-8")
 
     return target
+
+
+def get_asset_path(asset_name: str) -> Path:
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", "")
+        if meipass:
+            return Path(meipass) / "assets" / asset_name
+        return Path(sys.executable).resolve().parent / "assets" / asset_name
+
+    project_root = Path(__file__).resolve().parents[1]
+    return project_root / "assets" / asset_name
+
 
