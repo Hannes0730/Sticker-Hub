@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 APP_DIR_NAME = "StickerHub"
@@ -17,6 +18,14 @@ def get_data_dir() -> Path:
     if not documents_dir.exists():
         documents_dir = Path.home()
     return documents_dir / APP_DIR_NAME
+
+
+def get_cache_dir() -> Path:
+    override = os.getenv("STICKER_HUB_CACHE_DIR", "").strip()
+    if override:
+        return Path(override).expanduser()
+
+    return Path(tempfile.gettempdir()) / APP_DIR_NAME
 
 
 def get_stickers_json_path() -> Path:
