@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v1.3.0 (2026-04-17)
+
+### Chores
+
+- Add .idea/copilotDiffState.xml to .gitignore
+  ([`97926e7`](https://github.com/Hannes0730/Sticker-Hub/commit/97926e71fdee036115089c4741081587c19959f1))
+
+- Update .gitignore to exclude Windows virtual environment directories
+  ([`144e9c7`](https://github.com/Hannes0730/Sticker-Hub/commit/144e9c7f0e148e1362ecf238768b27e69bf5096d))
+
+- Update .gitignore to include scripts directory and Python files
+  ([`abd9d2b`](https://github.com/Hannes0730/Sticker-Hub/commit/abd9d2bbc4d4f4abdbc99c58a83eed355eb2587f))
+
+### Continuous Integration
+
+- Add check for missing build script in Windows asset release
+  ([`1a2e836`](https://github.com/Hannes0730/Sticker-Hub/commit/1a2e836e2f3e2341af138a3b374fd27faa07d3ec))
+
+### Features
+
+- Add build script for Windows with error handling guidance
+  ([`c3437a8`](https://github.com/Hannes0730/Sticker-Hub/commit/c3437a873533edfaa826b5d0ae03bf2850d544ca))
+
+
 ## v1.2.0 (2026-04-17)
 
 ### Continuous Integration
