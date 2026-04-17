@@ -26,9 +26,16 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtWidgets import QScroller
 
 from sticker_hub.models import Sticker, StickerCatalog, append_sticker_to_json, load_catalog_from_json
-from sticker_hub.services import StickerCache, StickerDownloadManager, resolve_sticker_urls
+from sticker_hub.services import StickerCache, StickerDownloadManager, resolve_sticker_urls, upgrade_sticker_urls_file
 from sticker_hub.ui.sticker_card import StickerCard
 from sticker_hub.ui.sticker_grid import StickerGrid
+from sticker_hub.utils import build_thumbnail
+
+
+PREVIEW_QUALITY_SIZES: dict[str, tuple[int, int]] = {
+    "performance": (168, 168),
+    "high": (256, 256),
+}
 
 
 class MainWindow(QWidget):
@@ -46,9 +53,12 @@ class MainWindow(QWidget):
         self.selected_id: str | None = None
 
         self.cards_by_id: dict[str, StickerCard] = {}
+        self.preview_quality = "high"
 
         self.setWindowTitle(f"Sticker Board v{self.app_version}")
         self.resize(1220, 760)
+
+        self.downloader.set_thumbnail_size(PREVIEW_QUALITY_SIZES[self.preview_quality])
 
         root = QHBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
@@ -73,8 +83,20 @@ class MainWindow(QWidget):
         self.import_button = QPushButton("Import URL")
         self.import_button.setObjectName("ImportButton")
 
+        self.upgrade_urls_button = QPushButton("Upgrade URLs")
+        self.upgrade_urls_button.setObjectName("ImportButton")
+        self.upgrade_urls_button.setToolTip("Promote thumbnail-like links to preferred full-size URLs.")
+
+        self.quality_mode = QComboBox()
+        self.quality_mode.setObjectName("QualityModeCombo")
+        self.quality_mode.addItem("Preview: Performance", "performance")
+        self.quality_mode.addItem("Preview: High Quality", "high")
+        self.quality_mode.setCurrentIndex(1)
+        self.quality_mode.setToolTip("Controls preview thumbnail quality only. Sending uses original files.")
+
         self.copy_format = QComboBox()
         self.copy_format.setObjectName("CopyFormatCombo")
+        self.copy_format.addItem("Copy: Auto (Compat)", "auto_compat")
         self.copy_format.addItem("Copy: Original", "original")
         self.copy_format.addItem("Copy: GIF", ".gif")
         self.copy_format.addItem("Copy: WebP", ".webp")
@@ -95,8 +117,10 @@ class MainWindow(QWidget):
         QScroller.grabGesture(self.scroll.viewport(), QScroller.LeftMouseButtonGesture)
 
         top_bar.addWidget(self.search, stretch=1)
+        top_bar.addWidget(self.quality_mode)
         top_bar.addWidget(self.copy_format)
         top_bar.addWidget(self.import_button)
+        top_bar.addWidget(self.upgrade_urls_button)
         top_bar.addWidget(self.version_badge)
 
         root.addWidget(self.sidebar)
@@ -110,7 +134,9 @@ class MainWindow(QWidget):
 
         self.sidebar.currentItemChanged.connect(self._on_category_changed)
         self.search.textChanged.connect(lambda _: self._apply_filters())
+        self.quality_mode.currentIndexChanged.connect(self._on_preview_quality_changed)
         self.import_button.clicked.connect(self._open_import_dialog)
+        self.upgrade_urls_button.clicked.connect(self._upgrade_existing_urls)
         self.downloader.sticker_ready.connect(self._on_sticker_ready)
         self.downloader.sticker_failed.connect(self._on_sticker_failed)
 
@@ -194,6 +220,31 @@ class MainWindow(QWidget):
         if card:
             card.set_error(message)
 
+    def _on_preview_quality_changed(self, _index: int) -> None:
+        selected = str(self.quality_mode.currentData() or "high")
+        if selected not in PREVIEW_QUALITY_SIZES:
+            selected = "high"
+        if selected == self.preview_quality:
+            return
+
+        self.preview_quality = selected
+        self.downloader.set_thumbnail_size(PREVIEW_QUALITY_SIZES[selected])
+        self._refresh_loaded_previews()
+        label = "High Quality" if selected == "high" else "Performance"
+        self.status.setText(f"Preview mode: {label}")
+
+    def _refresh_loaded_previews(self) -> None:
+        size = PREVIEW_QUALITY_SIZES[self.preview_quality]
+        for card in self.cards_by_id.values():
+            if not card.local_path or not card.local_path.exists():
+                continue
+
+            try:
+                qimage = build_thumbnail(card.local_path.read_bytes(), size=size)
+                card.set_thumbnail(QPixmap.fromImage(qimage), card.local_path, card.is_animated)
+            except Exception:
+                continue
+
     def _on_card_left_click(self, sticker_id: str) -> None:
         self._set_selected(sticker_id)
         self._copy_sticker_to_send(sticker_id, set_clipboard=True)
@@ -249,7 +300,11 @@ class MainWindow(QWidget):
         if not card or not card.local_path:
             return
 
-        preferred_ext = str(self.copy_format.currentData())
+        selected_mode = str(self.copy_format.currentData())
+        preferred_ext = selected_mode
+        if selected_mode == "auto_compat":
+            preferred_ext = ".gif" if card.is_animated else "original"
+
         send_file, applied_preference = self.cache.create_send_copy(card.local_path, preferred_ext=preferred_ext)
         if not set_clipboard:
             return
@@ -258,14 +313,32 @@ class MainWindow(QWidget):
         mime.setUrls([QUrl.fromLocalFile(str(send_file))])
         QApplication.clipboard().setMimeData(mime)
 
+        if selected_mode == "auto_compat":
+            if send_file.suffix.lower() == ".gif":
+                self.status.setText(f"Copied (Compat GIF): {send_file.name}")
+                self.status.setToolTip("Compatibility mode uses GIF for animated stickers.")
+            else:
+                self.status.setText(f"Copied (Compat): {send_file.name}")
+                self.status.setToolTip("")
+            return
+
         if preferred_ext == "original":
-            self.status.setText(f"Copied: {send_file.name}")
+            if applied_preference:
+                self.status.setText(f"Copied: {send_file.name}")
+            else:
+                self.status.setText(f"Copied using original format ({send_file.suffix.upper()}).")
+            self.status.setToolTip("")
             return
 
         if applied_preference:
             self.status.setText(f"Copied as {send_file.suffix.upper()}: {send_file.name}")
+            if send_file.suffix.lower() == ".gif":
+                self.status.setToolTip("GIF supports only 256 colors. Use WebP or Original for best quality.")
+            else:
+                self.status.setToolTip("")
         else:
             self.status.setText(f"Copied using original format ({send_file.suffix.upper()}).")
+            self.status.setToolTip("")
 
     def _mark_recent(self, sticker_id: str) -> None:
         if sticker_id in self.recent:
@@ -306,6 +379,7 @@ class MainWindow(QWidget):
 
     def _import_from_url(self, source_url: str, category: str) -> None:
         self.import_button.setEnabled(False)
+        self.upgrade_urls_button.setEnabled(False)
         self.status.setText("Importing stickers...")
         try:
             resolved_urls = resolve_sticker_urls(source_url)
@@ -338,6 +412,29 @@ class MainWindow(QWidget):
             self.status.setText("Import failed.")
         finally:
             self.import_button.setEnabled(True)
+            self.upgrade_urls_button.setEnabled(True)
+
+    def _upgrade_existing_urls(self) -> None:
+        self.import_button.setEnabled(False)
+        self.upgrade_urls_button.setEnabled(False)
+        self.status.setText("Upgrading existing sticker URLs...")
+        try:
+            stats = upgrade_sticker_urls_file(self.sticker_file)
+            changed = stats["updated"] + stats["duplicates_removed"] + stats["invalid_skipped"]
+            if changed:
+                self._reload_catalog()
+            self.status.setText(
+                "URL upgrade complete: "
+                f"updated {stats['updated']}, "
+                f"duplicates removed {stats['duplicates_removed']}, "
+                f"invalid skipped {stats['invalid_skipped']}."
+            )
+        except Exception as exc:
+            QMessageBox.critical(self, "Upgrade failed", str(exc))
+            self.status.setText("Upgrade failed.")
+        finally:
+            self.import_button.setEnabled(True)
+            self.upgrade_urls_button.setEnabled(True)
 
     def _reload_catalog(self) -> None:
         self.catalog = load_catalog_from_json(self.sticker_file)

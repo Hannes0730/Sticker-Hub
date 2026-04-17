@@ -24,11 +24,18 @@ class DownloadSignals(QObject):
 
 
 class DownloadWorker(QRunnable):
-    def __init__(self, sticker: Sticker, cache: StickerCache, timeout_seconds: int = 20):
+    def __init__(
+        self,
+        sticker: Sticker,
+        cache: StickerCache,
+        timeout_seconds: int = 20,
+        thumbnail_size: tuple[int, int] = (168, 168),
+    ):
         super().__init__()
         self.sticker = sticker
         self.cache = cache
         self.timeout_seconds = timeout_seconds
+        self.thumbnail_size = thumbnail_size
         self.signals = DownloadSignals()
 
     def run(self) -> None:
@@ -36,7 +43,7 @@ class DownloadWorker(QRunnable):
             cached = self.cache.get(self.sticker.image_url)
             if cached:
                 image_bytes = cached.path.read_bytes()
-                qimage = build_thumbnail(image_bytes)
+                qimage = build_thumbnail(image_bytes, self.thumbnail_size)
                 self.signals.ready.emit(
                     StickerPayload(
                         sticker_id=self.sticker.sticker_id,
@@ -55,7 +62,7 @@ class DownloadWorker(QRunnable):
             ext = detect_extension(self.sticker.image_url, response.headers.get("Content-Type"))
             local_path = self.cache.put(self.sticker.image_url, ext, image_bytes, animated)
 
-            qimage = build_thumbnail(image_bytes)
+            qimage = build_thumbnail(image_bytes, self.thumbnail_size)
             self.signals.ready.emit(
                 StickerPayload(
                     sticker_id=self.sticker.sticker_id,

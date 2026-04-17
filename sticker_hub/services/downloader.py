@@ -17,13 +17,17 @@ class StickerDownloadManager(QObject):
         self._pool = QThreadPool.globalInstance()
         self._pool.setMaxThreadCount(max(self._pool.maxThreadCount(), 6))
         self._inflight: set[str] = set()
+        self._thumbnail_size: tuple[int, int] = (168, 168)
+
+    def set_thumbnail_size(self, size: tuple[int, int]) -> None:
+        self._thumbnail_size = size
 
     def queue_download(self, sticker: Sticker) -> None:
         if sticker.sticker_id in self._inflight:
             return
 
         self._inflight.add(sticker.sticker_id)
-        worker = DownloadWorker(sticker, self.cache)
+        worker = DownloadWorker(sticker, self.cache, thumbnail_size=self._thumbnail_size)
         worker.signals.ready.connect(self._handle_ready)
         worker.signals.failed.connect(self._handle_failed)
         self._pool.start(worker)
