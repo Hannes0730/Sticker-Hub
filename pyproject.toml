@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "sticker-hub"
 authors = [
@@ -14,6 +18,10 @@ dependencies = [
     "python-semantic-release>=10.5.3",
     "requests>=2.31",
 ]
+
+[tool.setuptools.packages.find]
+include = ["sticker_hub*"]
+exclude = ["assets*", "build*", "dist*"]
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
