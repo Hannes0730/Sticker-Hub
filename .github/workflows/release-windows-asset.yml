@@ -1,11 +1,8 @@
 name: Build Windows Asset
 
 on:
-  push:
-    tags:
-      - "v*"
   release:
-    types: [published, released, prereleased]
+    types: [published]
 
 permissions:
   contents: write
@@ -60,4 +57,3 @@ jobs:
           tag_name: ${{ steps.resolve_tag.outputs.tag }}
           files: |
             dist/StickerHub-win64.zip
-            dist/StickerHub/StickerHub.exe
