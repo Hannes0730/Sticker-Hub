@@ -97,9 +97,10 @@ ENV/
 [Ll]ib
 [Ll]ib64
 [Ll]ocal
-[Ss]cripts
-!scripts/
-!scripts/*.py
+env/Scripts/
+venv/Scripts/
+ENV/Scripts/
+.venv/Scripts/
 pyvenv.cfg
 .venv
 pip-selfcheck.json
