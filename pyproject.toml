@@ -14,3 +14,20 @@ dependencies = [
     "python-semantic-release>=10.5.3",
     "requests>=2.31",
 ]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+commit_parser = "conventional"
+tag_format = "v{version}"
+major_on_zero = true
+
+[tool.semantic_release.branches.main]
+match = "^main$"
+prerelease = false
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
+
+[tool.semantic_release.publish]
+upload_to_vcs_release = true
+dist_glob_patterns = ["dist/*.zip"]
