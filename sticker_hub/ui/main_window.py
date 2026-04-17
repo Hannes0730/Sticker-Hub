@@ -32,11 +32,12 @@ from sticker_hub.ui.sticker_grid import StickerGrid
 
 
 class MainWindow(QWidget):
-    def __init__(self, catalog: StickerCatalog, cache: StickerCache, sticker_file: Path):
+    def __init__(self, catalog: StickerCatalog, cache: StickerCache, sticker_file: Path, app_version: str):
         super().__init__()
         self.catalog = catalog
         self.cache = cache
         self.sticker_file = sticker_file
+        self.app_version = app_version.strip() or "dev"
         self.downloader = StickerDownloadManager(cache)
 
         self.favorites: set[str] = set()
@@ -46,7 +47,7 @@ class MainWindow(QWidget):
 
         self.cards_by_id: dict[str, StickerCard] = {}
 
-        self.setWindowTitle("Sticker Board")
+        self.setWindowTitle(f"Sticker Board v{self.app_version}")
         self.resize(1220, 760)
 
         root = QHBoxLayout(self)
@@ -79,6 +80,9 @@ class MainWindow(QWidget):
         self.copy_format.addItem("Copy: WebP", ".webp")
         self.copy_format.setToolTip("Choose the format used when copying stickers.")
 
+        self.version_badge = QLabel(f"v{self.app_version}")
+        self.version_badge.setObjectName("StatusLabel")
+
         self.status = QLabel("Loading stickers...")
         self.status.setObjectName("StatusLabel")
 
@@ -93,6 +97,7 @@ class MainWindow(QWidget):
         top_bar.addWidget(self.search, stretch=1)
         top_bar.addWidget(self.copy_format)
         top_bar.addWidget(self.import_button)
+        top_bar.addWidget(self.version_badge)
 
         root.addWidget(self.sidebar)
         right_layout.addLayout(top_bar)
@@ -340,6 +345,4 @@ class MainWindow(QWidget):
         self._build_sidebar()
         self._create_cards()
         self._apply_filters()
-
-
 
