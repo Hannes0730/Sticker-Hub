@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 from PySide6.QtCore import QMimeData, Qt, QUrl
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -36,6 +36,9 @@ PREVIEW_QUALITY_SIZES: dict[str, tuple[int, int]] = {
     "performance": (168, 168),
     "high": (256, 256),
 }
+
+HIDDEN_NAV_CATEGORIES = {"Animated", "Favorite Packs", "Favorites Pack", "Imported"}
+TOP_LEVEL_CATEGORIES = ["All", "Favorites", "Recent"]
 
 
 class MainWindow(QWidget):
@@ -145,17 +148,60 @@ class MainWindow(QWidget):
 
     def _build_sidebar(self) -> None:
         self.sidebar.clear()
-        for category in ["All", "Favorites", "Recent", *self.catalog.categories]:
-            item = QListWidgetItem(category)
-            self.sidebar.addItem(item)
+
+        self._add_sidebar_group_header("Quick Access")
+        for category in TOP_LEVEL_CATEGORIES:
+            self._add_sidebar_entry(category)
+
+        self._add_sidebar_group_header("Custom Packs")
+        for category in self._custom_pack_categories():
+            self._add_sidebar_entry(category)
+
         if self.sidebar.count() > 0:
-            matching_items = self.sidebar.findItems(self.current_category, Qt.MatchFlag.MatchExactly)
-            self.sidebar.setCurrentItem(matching_items[0] if matching_items else self.sidebar.item(0))
+            selected_item = self._find_sidebar_item(self.current_category)
+            if selected_item is None:
+                selected_item = self._find_sidebar_item("All")
+                self.current_category = "All"
+            if selected_item is not None:
+                self.sidebar.setCurrentItem(selected_item)
+
+    def _add_sidebar_group_header(self, label: str) -> None:
+        item = QListWidgetItem(label)
+        item.setData(Qt.ItemDataRole.UserRole, "group_header")
+        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable & ~Qt.ItemFlag.ItemIsEnabled)
+
+        header_font = QFont(item.font())
+        header_font.setBold(True)
+        item.setFont(header_font)
+        self.sidebar.addItem(item)
+
+    def _add_sidebar_entry(self, category: str) -> None:
+        item = QListWidgetItem(category)
+        item.setData(Qt.ItemDataRole.UserRole, "category")
+        self.sidebar.addItem(item)
+
+    def _find_sidebar_item(self, label: str) -> QListWidgetItem | None:
+        for index in range(self.sidebar.count()):
+            item = self.sidebar.item(index)
+            if item.data(Qt.ItemDataRole.UserRole) != "category":
+                continue
+            if item.text() == label:
+                return item
+        return None
+
+    def _custom_pack_categories(self) -> list[str]:
+        custom_categories = [
+            category
+            for category in self.catalog.categories
+            if category not in TOP_LEVEL_CATEGORIES and category not in HIDDEN_NAV_CATEGORIES
+        ]
+        return sorted(custom_categories, key=str.casefold)
 
     def _create_cards(self) -> None:
         self.cards_by_id = {}
         for sticker in self.catalog.stickers:
             card = StickerCard(sticker)
+            card.setParent(self.grid_widget)
             card.left_clicked.connect(self._on_card_left_click)
             card.copy_requested.connect(self._on_copy_requested)
             card.save_requested.connect(self._on_save_requested)
@@ -165,6 +211,11 @@ class MainWindow(QWidget):
 
     def _on_category_changed(self, current: QListWidgetItem, _previous: QListWidgetItem) -> None:
         if not current:
+            return
+        if current.data(Qt.ItemDataRole.UserRole) != "category":
+            fallback = self._find_sidebar_item(self.current_category) or self._find_sidebar_item("All")
+            if fallback is not None and fallback is not current:
+                self.sidebar.setCurrentItem(fallback)
             return
         self.current_category = current.text()
         self._apply_filters()
