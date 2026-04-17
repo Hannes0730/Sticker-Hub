@@ -19,7 +19,7 @@ def get_data_dir() -> Path:
         documents_dir = Path.home()
     return documents_dir / APP_DIR_NAME
 
-
+#test
 def get_cache_dir() -> Path:
     override = os.getenv("STICKER_HUB_CACHE_DIR", "").strip()
     if override:
