@@ -1,11 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
+project_root = Path(globals().get("SPECPATH", Path.cwd())).resolve()
+icon_file = project_root / "assets" / "icon.ico"
+png_icon_file = project_root / "assets" / "icon.png"
+datas = [(str(png_icon_file), "assets")] if png_icon_file.exists() else []
+
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=datas,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -30,6 +37,7 @@ exe = EXE(
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
+    icon=str(icon_file) if icon_file.exists() else None,
     codesign_identity=None,
     entitlements_file=None,
 )

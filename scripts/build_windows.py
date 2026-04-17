@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from PIL import Image
+
 
 def _is_access_denied(output: str) -> bool:
     lowered = output.lower()
@@ -66,6 +68,35 @@ def _print_elevation_hint(script_path: Path, spec: Path, clean: bool) -> None:
     print(command)
 
 
+def _prepare_windows_icon(project_root: Path) -> None:
+    png_icon = project_root / "assets" / "icon.png"
+    ico_icon = project_root / "assets" / "icon.ico"
+
+    if not png_icon.exists():
+        print(f"Icon source not found, skipping icon conversion: {png_icon}")
+        return
+
+    try:
+        with Image.open(png_icon) as image:
+            rgba = image.convert("RGBA")
+
+            width, height = rgba.size
+            if width != height:
+                side = min(width, height)
+                left = (width - side) // 2
+                top = (height - side) // 2
+                rgba = rgba.crop((left, top, left + side, top + side))
+
+            rgba.save(
+                ico_icon,
+                format="ICO",
+                sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+            )
+        print(f"Prepared Windows icon: {ico_icon}")
+    except Exception as exc:
+        print(f"Failed to prepare Windows icon from {png_icon}: {exc}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Build StickerHub in project-local dist/build with WinError 5 guidance."
@@ -80,6 +111,8 @@ def main() -> int:
     if not spec.exists():
         print(f"Spec file not found: {spec}")
         return 2
+
+    _prepare_windows_icon(project_root)
 
     primary_dist = project_root / "dist"
     primary_work = project_root / "build"
