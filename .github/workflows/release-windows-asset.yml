@@ -1,8 +1,11 @@
 name: Build Windows Asset
 
 on:
+  push:
+    tags:
+      - "v*"
   release:
-    types: [published]
+    types: [published, released, prereleased]
 
 permissions:
   contents: write
@@ -11,10 +14,20 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
+      - name: Resolve release tag
+        id: resolve_tag
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "release") {
+            "tag=${{ github.event.release.tag_name }}" >> $env:GITHUB_OUTPUT
+          } else {
+            "tag=${{ github.ref_name }}" >> $env:GITHUB_OUTPUT
+          }
+
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ steps.resolve_tag.outputs.tag }}
           fetch-depth: 0
 
       - name: Setup Python
@@ -39,7 +52,7 @@ jobs:
       - name: Upload asset to release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ steps.resolve_tag.outputs.tag }}
           files: |
             dist/StickerHub-win64.zip
             dist/StickerHub/StickerHub.exe
