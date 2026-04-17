@@ -77,9 +77,11 @@ Notes:
 - Page URLs are parsed for candidate image links.
 - Duplicate URLs are skipped automatically.
 - Imported stickers are stored without display names.
+- Use `Upgrade URLs` to rewrite existing `stickers.json` entries to preferred full-size URL variants and clean duplicates.
 
 ## Copy Behavior
 
+- `Auto (Compat)`: uses GIF for animated stickers and original format for static stickers.
 - `Original`: keeps downloaded format.
 - `GIF` / `WebP`: attempts conversion before copy.
 - If conversion fails, app falls back to original format automatically.
