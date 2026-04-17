@@ -10,13 +10,8 @@ permissions:
 
 jobs:
   validate:
-    name: Validate (${{ matrix.os }}, py${{ matrix.python-version }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.13"]
+    name: Validate (windows-latest, py3.13)
+    runs-on: windows-latest
 
     env:
       STICKER_HUB_DATA_DIR: ${{ github.workspace }}/.stickerhub-ci
@@ -28,7 +23,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.13"
           cache: pip
 
       - name: Install dependencies
