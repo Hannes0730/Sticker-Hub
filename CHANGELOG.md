@@ -2,6 +2,33 @@
 
 <!-- version list -->
 
+## v1.6.0 (2026-04-17)
+
+### Build System
+
+- Update build system configuration for setuptools
+  ([`7d634dd`](https://github.com/Hannes0730/Sticker-Hub/commit/7d634ddd975107bbb4b00e13014825dfcda2adda))
+
+### Code Style
+
+- Update sidebar item styling for disabled state
+  ([`e70304d`](https://github.com/Hannes0730/Sticker-Hub/commit/e70304d7fe32244a8116b4ab29a14675d9511038))
+
+### Features
+
+- Add application icon support in build configuration
+  ([`a6a6c5f`](https://github.com/Hannes0730/Sticker-Hub/commit/a6a6c5f4c7f5310481eb4d95e6ac3b36a2cc203e))
+
+- Add function to prepare Windows icon from PNG source
+  ([`e33bbf3`](https://github.com/Hannes0730/Sticker-Hub/commit/e33bbf325e17b819d13c7fbf98e9c7e63fbaa8ca))
+
+- Add function to retrieve asset paths for bundled and local assets
+  ([`3971ca1`](https://github.com/Hannes0730/Sticker-Hub/commit/3971ca11b1c43aaf745ad88ee68bd8e14b66dc2a))
+
+- Add runtime icon loading for application window
+  ([`b2f0886`](https://github.com/Hannes0730/Sticker-Hub/commit/b2f08860050bc9220632182e224bcc24544f9d5e))
+
+
 ## v1.5.0 (2026-04-17)
 
 ### Bug Fixes
