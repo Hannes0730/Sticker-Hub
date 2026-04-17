@@ -56,14 +56,28 @@ class StickerCache:
 
         return output
 
-    def create_send_copy(self, source: Path, preferred_ext: str = "original") -> tuple[Path, bool]:
+    def create_send_copy(
+        self,
+        source: Path,
+        preferred_ext: str = "original",
+        upscale_factor: int = 1,
+    ) -> tuple[Path, bool]:
         timestamp = int(time.time() * 1000)
         normalized_pref = preferred_ext.strip().lower()
+        scale = max(1, int(upscale_factor))
 
         if normalized_pref in {"", "original", source.suffix.lower()}:
             send_file = self.send_dir / f"sticker_{timestamp}{source.suffix.lower()}"
-            shutil.copy2(source, send_file)
-            return send_file, True
+            if scale == 1:
+                shutil.copy2(source, send_file)
+                return send_file, True
+
+            try:
+                self._convert_image(source, send_file, source.suffix.lower(), scale)
+                return send_file, True
+            except Exception:
+                shutil.copy2(source, send_file)
+                return send_file, False
 
         if normalized_pref not in {".gif", ".webp"}:
             send_file = self.send_dir / f"sticker_{timestamp}{source.suffix.lower()}"
@@ -72,7 +86,7 @@ class StickerCache:
 
         converted_path = self.send_dir / f"sticker_{timestamp}{normalized_pref}"
         try:
-            self._convert_image(source, converted_path, normalized_pref)
+            self._convert_image(source, converted_path, normalized_pref, scale)
             return converted_path, True
         except Exception:
             send_file = self.send_dir / f"sticker_{timestamp}{source.suffix.lower()}"
@@ -99,29 +113,75 @@ class StickerCache:
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.meta_file.write_text(json.dumps(self._index, indent=2), encoding="utf-8")
 
-    def _convert_image(self, source: Path, destination: Path, target_ext: str) -> None:
+    def _convert_image(self, source: Path, destination: Path, target_ext: str, upscale_factor: int = 1) -> None:
         with Image.open(source) as img:
             animated = bool(getattr(img, "is_animated", False) and getattr(img, "n_frames", 1) > 1)
             if target_ext == ".gif":
-                self._save_as_gif(img, destination, animated)
+                self._save_as_gif(img, destination, animated, upscale_factor)
             elif target_ext == ".webp":
-                self._save_as_webp(img, destination, animated)
+                self._save_as_webp(img, destination, animated, upscale_factor)
+            elif target_ext in {".png", ".jpg", ".jpeg"}:
+                self._save_as_static(img, destination, target_ext, animated, upscale_factor)
             else:
                 raise ValueError(f"Unsupported target extension: {target_ext}")
 
-    def _save_as_gif(self, image: Image.Image, destination: Path, animated: bool) -> None:
-        if not animated:
-            image.convert("RGBA").convert("P", palette=Image.Palette.ADAPTIVE).save(destination, format="GIF")
+    def _save_as_static(
+        self,
+        image: Image.Image,
+        destination: Path,
+        target_ext: str,
+        animated: bool,
+        upscale_factor: int,
+    ) -> None:
+        if animated:
+            # Static formats cannot preserve animation semantics here.
+            raise ValueError("Animated image cannot be exported as static format with preserved motion")
+
+        output = image.convert("RGBA")
+        if upscale_factor > 1:
+            output = self._resize_image(output, upscale_factor)
+
+        if target_ext in {".jpg", ".jpeg"}:
+            output.convert("RGB").save(destination, format="JPEG", quality=95, optimize=True)
             return
 
-        frames = [frame.convert("RGBA") for frame in ImageSequence.Iterator(image)]
-        durations = [
-            frame.info.get("duration", image.info.get("duration", 80))
-            for frame in ImageSequence.Iterator(image)
-        ]
+        output.save(destination, format="PNG", optimize=True)
 
-        first = frames[0].convert("P", palette=Image.Palette.ADAPTIVE)
-        rest = [frame.convert("P", palette=Image.Palette.ADAPTIVE) for frame in frames[1:]]
+    def _save_as_gif(self, image: Image.Image, destination: Path, animated: bool, upscale_factor: int) -> None:
+        if not animated:
+            output = image.convert("RGBA")
+            if upscale_factor > 1:
+                output = self._resize_image(output, upscale_factor)
+            # GIF is limited to 256 colors; dithering helps reduce harsh banding.
+            output.quantize(
+                colors=256,
+                method=Image.Quantize.FASTOCTREE,
+                dither=Image.Dither.FLOYDSTEINBERG,
+            ).save(destination, format="GIF")
+            return
+
+        frames: list[Image.Image] = []
+        durations: list[int] = []
+        for frame in ImageSequence.Iterator(image):
+            rgba = frame.convert("RGBA")
+            if upscale_factor > 1:
+                rgba = self._resize_image(rgba, upscale_factor)
+            frames.append(rgba)
+            durations.append(int(frame.info.get("duration", image.info.get("duration", 80))))
+
+        first = frames[0].quantize(
+            colors=256,
+            method=Image.Quantize.FASTOCTREE,
+            dither=Image.Dither.FLOYDSTEINBERG,
+        )
+        rest = [
+            frame.quantize(
+                colors=256,
+                method=Image.Quantize.FASTOCTREE,
+                dither=Image.Dither.FLOYDSTEINBERG,
+            )
+            for frame in frames[1:]
+        ]
         first.save(
             destination,
             format="GIF",
@@ -133,9 +193,12 @@ class StickerCache:
             optimize=False,
         )
 
-    def _save_as_webp(self, image: Image.Image, destination: Path, animated: bool) -> None:
+    def _save_as_webp(self, image: Image.Image, destination: Path, animated: bool, upscale_factor: int) -> None:
         if not animated:
-            image.convert("RGBA").save(
+            output = image.convert("RGBA")
+            if upscale_factor > 1:
+                output = self._resize_image(output, upscale_factor)
+            output.save(
                 destination,
                 format="WEBP",
                 lossless=True,
@@ -144,11 +207,14 @@ class StickerCache:
             )
             return
 
-        frames = [frame.convert("RGBA") for frame in ImageSequence.Iterator(image)]
-        durations = [
-            frame.info.get("duration", image.info.get("duration", 80))
-            for frame in ImageSequence.Iterator(image)
-        ]
+        frames: list[Image.Image] = []
+        durations: list[int] = []
+        for frame in ImageSequence.Iterator(image):
+            rgba = frame.convert("RGBA")
+            if upscale_factor > 1:
+                rgba = self._resize_image(rgba, upscale_factor)
+            frames.append(rgba)
+            durations.append(int(frame.info.get("duration", image.info.get("duration", 80))))
 
         first = frames[0]
         first.save(
@@ -161,6 +227,16 @@ class StickerCache:
             lossless=True,
             quality=90,
             method=6,
+        )
+
+    def _resize_image(self, image: Image.Image, upscale_factor: int) -> Image.Image:
+        if upscale_factor <= 1:
+            return image
+
+        width, height = image.size
+        return image.resize(
+            (max(1, width * upscale_factor), max(1, height * upscale_factor)),
+            Image.Resampling.LANCZOS,
         )
 
 
