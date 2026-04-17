@@ -19,7 +19,7 @@ jobs:
         python-version: ["3.13"]
 
     env:
-      STICKER_HUB_DATA_DIR: ${{ runner.temp }}/stickerhub-ci
+      STICKER_HUB_DATA_DIR: ${{ github.workspace }}/.stickerhub-ci
 
     steps:
       - name: Checkout
