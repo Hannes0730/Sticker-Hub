@@ -41,8 +41,13 @@ jobs:
           python -m pip install -e .
 
       - name: Build StickerHub
+        shell: pwsh
         run: |
-          python .\scripts\build_windows.py --clean
+          if (-not (Test-Path "scripts/build_windows.py")) {
+            Write-Error "scripts/build_windows.py is missing in this ref. Ensure the file is committed and not excluded by .gitignore."
+            exit 1
+          }
+          python scripts/build_windows.py --clean
 
       - name: Zip build output
         shell: pwsh
