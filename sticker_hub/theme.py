@@ -59,6 +59,14 @@ QListWidget#Sidebar::item {
     padding: 8px;
     border-radius: 8px;
 }
+QListWidget#Sidebar::item:disabled {
+    color: #8b9099;
+    margin-top: 8px;
+    margin-bottom: 2px;
+    padding: 4px 8px;
+    border-radius: 0px;
+    background: transparent;
+}
 QListWidget#Sidebar::item:selected {
     background: #5865f2;
     color: #ffffff;
