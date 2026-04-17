@@ -29,7 +29,8 @@ class StickerGrid(QWidget):
         while self.layout_grid.count():
             item = self.layout_grid.takeAt(0)
             if item.widget():
-                item.widget().setParent(self)
+                widget = item.widget()
+                widget.hide()
 
         if not self._cards:
             return
@@ -41,5 +42,6 @@ class StickerGrid(QWidget):
             row = idx // columns
             col = idx % columns
             self.layout_grid.addWidget(card, row, col)
+            card.setVisible(True)
 
 
