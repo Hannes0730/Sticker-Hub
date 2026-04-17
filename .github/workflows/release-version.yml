@@ -26,17 +26,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .
 
-      - name: Configure Git author
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Ensure changelog file exists
-        run: |
-          if [ ! -f CHANGELOG.md ]; then
-            printf "# Changelog\n\nAll notable changes to this project will be documented in this file.\n\n<!-- version list -->\n" > CHANGELOG.md
-          fi
-
       - name: Validate release token
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
@@ -47,9 +36,8 @@ jobs:
             exit 1
           fi
 
-      - name: Semantic release (version + changelog + release)
+      - name: Semantic release (tag/release only, protected-branch safe)
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
-          python -m semantic_release version
-          python -m semantic_release publish
+          python -m semantic_release version --no-commit --no-changelog --tag --push --vcs-release --skip-build
