@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.5.0 (2026-04-17)
+
+### Bug Fixes
+
+- Hide widgets in sticker grid before clearing layout
+  ([`ad3b406`](https://github.com/Hannes0730/Sticker-Hub/commit/ad3b40635dfd8c047509cec83511f378b7dd09ee))
+
+### Code Style
+
+- Update sidebar item styling for disabled state
+  ([`358b568`](https://github.com/Hannes0730/Sticker-Hub/commit/358b56801b06071cb6629083cacc63205ea01300))
+
+### Features
+
+- Enhance sidebar navigation with grouped headers and custom categories
+  ([`aedbd91`](https://github.com/Hannes0730/Sticker-Hub/commit/aedbd9106581103de2772efe7d0b03f9931e6bdd))
+
+
 ## v1.4.0 (2026-04-17)
 
 ### Chores
