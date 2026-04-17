@@ -13,6 +13,8 @@ from pathlib import Path
 
 from PIL import Image, ImageSequence
 
+from sticker_hub.paths import get_cache_dir
+
 
 @dataclass
 class CacheEntry:
@@ -21,8 +23,11 @@ class CacheEntry:
 
 
 class StickerCache:
-    def __init__(self, app_name: str = "sticker_hub"):
-        self.base_dir = Path(tempfile.gettempdir()) / app_name
+    def __init__(self, app_name: str | None = None):
+        if app_name:
+            self.base_dir = Path(tempfile.gettempdir()) / app_name
+        else:
+            self.base_dir = get_cache_dir()
         self.files_dir = self.base_dir / "stickers"
         self.send_dir = self.base_dir / "send"
         self.meta_file = self.base_dir / "index.json"
