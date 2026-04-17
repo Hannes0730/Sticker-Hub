@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.4.0 (2026-04-17)
+
+### Chores
+
+- Exclude StickerHub.spec from .gitignore
+  ([`38ea798`](https://github.com/Hannes0730/Sticker-Hub/commit/38ea798d286b8510865b94b2335ab574e9dfdc2f))
+
+### Features
+
+- Add StickerHub.spec for Windows build configuration
+  ([`1552d7c`](https://github.com/Hannes0730/Sticker-Hub/commit/1552d7c5a12d3d157cb3d7face8718635c2cc14a))
+
+
 ## v1.3.0 (2026-04-17)
 
 ### Chores
