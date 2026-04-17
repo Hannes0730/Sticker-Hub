@@ -1,0 +1,43 @@
+name: Build Windows Asset
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Build StickerHub
+        run: |
+          python .\scripts\build_windows.py --clean
+
+      - name: Zip build output
+        shell: pwsh
+        run: |
+          Compress-Archive -Path .\dist\StickerHub\* -DestinationPath .\dist\StickerHub-win64.zip -Force
+
+      - name: Upload asset to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: dist/StickerHub-win64.zip
