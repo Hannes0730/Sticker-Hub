@@ -1,6 +1,7 @@
-# Changelog
-
-All notable changes to this project will be documented in this file.
+# CHANGELOG
 
 <!-- version list -->
 
+## v1.0.0 (2026-04-17)
+
+- Initial Release
