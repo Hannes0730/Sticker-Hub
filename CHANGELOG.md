@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.7.1 (2026-04-17)
+
+### Bug Fixes
+
+- Enhance pyproject.toml detection with multiple candidate paths
+  ([`50c5713`](https://github.com/Hannes0730/Sticker-Hub/commit/50c5713ded28eff55066dc101654b3dc48418848))
+
+- Update asset handling to include pyproject.toml if it exists
+  ([`d991912`](https://github.com/Hannes0730/Sticker-Hub/commit/d991912b51aef28afcd1c0e3fcb73846c9febe1c))
+
+### Continuous Integration
+
+- Update release workflow to configure git author and use release token
+  ([`a783b03`](https://github.com/Hannes0730/Sticker-Hub/commit/a783b0342e60654a1ed93bac91ac8cedf0715e2d))
+
+
 ## v1.6.0 (2026-04-17)
 
 ### Build System
