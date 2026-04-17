@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from importlib import metadata
 from pathlib import Path
+import sys
 import tomllib
 
 
@@ -14,8 +15,17 @@ def get_app_version() -> str:
     except metadata.PackageNotFoundError:
         pass
 
-    pyproject_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
-    if pyproject_path.exists():
+    candidate_paths = [
+        Path(__file__).resolve().parents[1] / "pyproject.toml",
+        Path(__file__).resolve().parents[2] / "pyproject.toml",
+    ]
+    meipass = getattr(sys, "_MEIPASS", "")
+    if meipass:
+        candidate_paths.insert(0, Path(meipass) / "pyproject.toml")
+
+    for pyproject_path in candidate_paths:
+        if not pyproject_path.exists():
+            continue
         try:
             payload = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
             project = payload.get("project", {})
@@ -23,7 +33,7 @@ def get_app_version() -> str:
             if version:
                 return version
         except Exception:
-            pass
+            continue
 
     return "dev"
 

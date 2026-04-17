@@ -5,7 +5,12 @@ from pathlib import Path
 project_root = Path(globals().get("SPECPATH", Path.cwd())).resolve()
 icon_file = project_root / "assets" / "icon.ico"
 png_icon_file = project_root / "assets" / "icon.png"
-datas = [(str(png_icon_file), "assets")] if png_icon_file.exists() else []
+pyproject_file = project_root / "pyproject.toml"
+datas = []
+if png_icon_file.exists():
+    datas.append((str(png_icon_file), "assets"))
+if pyproject_file.exists():
+    datas.append((str(pyproject_file), "."))
 
 
 a = Analysis(
