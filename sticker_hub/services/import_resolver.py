@@ -10,6 +10,8 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 import requests
 
 _IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
+_ANIMATED_FORMAT_HINTS = {"gif", "webp"}
+_STATIC_FORMAT_HINTS = {"png", "jpg", "jpeg"}
 
 
 class _ImageExtractor(HTMLParser):
@@ -113,38 +115,41 @@ def upgrade_sticker_urls_file(path: Path) -> dict[str, int]:
 
     rewritten: dict[str, Any] = {}
     for category, items in payload.items():
-        if not isinstance(items, list):
+        if isinstance(items, list):
+            new_items, stats = _rewrite_sticker_entries(items, seen)
+            updated += stats["updated"]
+            duplicates_removed += stats["duplicates_removed"]
+            invalid_skipped += stats["invalid_skipped"]
+            unchanged += stats["unchanged"]
+            rewritten[category] = new_items
+            continue
+
+        if not isinstance(items, dict):
             rewritten[category] = items
             continue
 
-        new_items: list[dict[str, Any]] = []
-        for item in items:
-            if not isinstance(item, dict):
+        rewritten_packs: dict[str, Any] = {}
+        for pack_name, pack_payload in items.items():
+            if not isinstance(pack_payload, dict):
                 invalid_skipped += 1
                 continue
 
-            original_url = str(item.get("image_url", "")).strip()
-            if not original_url:
+            stickers = pack_payload.get("stickers", [])
+            if not isinstance(stickers, list):
                 invalid_skipped += 1
                 continue
 
-            upgraded_url = preferred_image_url(original_url)
-            normalized_key = _normalize_url_for_dedupe(upgraded_url)
-            if normalized_key in seen:
-                duplicates_removed += 1
-                continue
+            rewritten_stickers, stats = _rewrite_sticker_entries(stickers, seen)
+            updated += stats["updated"]
+            duplicates_removed += stats["duplicates_removed"]
+            invalid_skipped += stats["invalid_skipped"]
+            unchanged += stats["unchanged"]
 
-            seen.add(normalized_key)
-            updated_item = dict(item)
-            updated_item["image_url"] = upgraded_url
-            new_items.append(updated_item)
+            pack_rewritten = dict(pack_payload)
+            pack_rewritten["stickers"] = rewritten_stickers
+            rewritten_packs[pack_name] = pack_rewritten
 
-            if upgraded_url != original_url:
-                updated += 1
-            else:
-                unchanged += 1
-
-        rewritten[category] = new_items
+        rewritten[category] = rewritten_packs
 
     if updated or duplicates_removed or invalid_skipped:
         temp_path = path.with_suffix(path.suffix + ".tmp")
@@ -159,18 +164,70 @@ def upgrade_sticker_urls_file(path: Path) -> dict[str, int]:
     }
 
 
+def _rewrite_sticker_entries(items: list[Any], seen: set[str]) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    updated = 0
+    duplicates_removed = 0
+    invalid_skipped = 0
+    unchanged = 0
+
+    new_items: list[dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            invalid_skipped += 1
+            continue
+
+        original_url = str(item.get("image_url", "")).strip()
+        if not original_url:
+            invalid_skipped += 1
+            continue
+
+        upgraded_url = preferred_image_url(original_url)
+        normalized_key = _normalize_url_for_dedupe(upgraded_url)
+        if normalized_key in seen:
+            duplicates_removed += 1
+            continue
+
+        seen.add(normalized_key)
+        updated_item = dict(item)
+        updated_item["image_url"] = upgraded_url
+        new_items.append(updated_item)
+
+        if upgraded_url != original_url:
+            updated += 1
+        else:
+            unchanged += 1
+
+    return new_items, {
+        "updated": updated,
+        "duplicates_removed": duplicates_removed,
+        "invalid_skipped": invalid_skipped,
+        "unchanged": unchanged,
+    }
+
+
 def _looks_like_image_url(value: str) -> bool:
-    path = urlparse(value).path.lower()
-    return path.endswith(_IMAGE_EXTENSIONS)
+    parsed = urlparse(value)
+    path = parsed.path.lower()
+    if path.endswith(_IMAGE_EXTENSIONS):
+        return True
+
+    hinted_format = _query_format_hint(parsed)
+    if hinted_format in _ANIMATED_FORMAT_HINTS.union(_STATIC_FORMAT_HINTS):
+        return True
+
+    return False
 
 
 def _candidate_rank(candidate: str) -> tuple[int, int]:
     parsed = urlparse(candidate)
     path = parsed.path.lower()
+
+    hinted_format = _query_format_hint(parsed)
     # Prefer likely animated and non-thumbnail URLs first.
-    animated_score = 0 if path.endswith((".gif", ".webp")) else 1
+    animated_score = 0 if path.endswith((".gif", ".webp")) or hinted_format in _ANIMATED_FORMAT_HINTS else 1
+    static_score = 1 if path.endswith((".png", ".jpg", ".jpeg")) or hinted_format in _STATIC_FORMAT_HINTS else 0
     thumb_score = 1 if ".thumb" in path else 0
-    return (thumb_score, animated_score)
+    return (thumb_score, animated_score, static_score)
 
 
 def _build_preferred_variants(url: str) -> list[str]:
@@ -194,8 +251,6 @@ def _build_preferred_variants(url: str) -> list[str]:
             "q",
             "fit",
             "crop",
-            "format",
-            "fm",
         }:
             continue
         query_items.append((key, value))
@@ -239,5 +294,27 @@ def _normalize_url_for_dedupe(url: str) -> str:
             "",
         )
     )
+
+
+def _query_format_hint(parsed) -> str:
+    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        lowered_key = key.lower()
+        if lowered_key not in {"format", "fm", "ext", "type", "mime"}:
+            continue
+
+        lowered_value = value.strip().lower()
+        if not lowered_value:
+            continue
+
+        if "gif" in lowered_value:
+            return "gif"
+        if "webp" in lowered_value:
+            return "webp"
+        if "png" in lowered_value:
+            return "png"
+        if "jpeg" in lowered_value or "jpg" in lowered_value:
+            return "jpg"
+
+    return ""
 
 
