@@ -65,7 +65,7 @@ def _select_windows_asset(assets: object) -> tuple[str, str]:
     if not isinstance(assets, list):
         return "", ""
 
-    # Prefer a direct executable for easier install, then a zip fallback.
+    # Prefer ZIP for in-place replacement updates, then installer fallbacks.
     ranked: list[tuple[int, str, str]] = []
     for item in assets:
         if not isinstance(item, dict):
@@ -77,10 +77,12 @@ def _select_windows_asset(assets: object) -> tuple[str, str]:
             continue
 
         lowered = name.lower()
+        if "source code" in lowered:
+            continue
         score = 99
-        if lowered.endswith(".exe"):
+        if lowered.endswith(".zip"):
             score = 0
-        elif lowered.endswith(".zip"):
+        elif lowered.endswith(".exe"):
             score = 1
         elif lowered.endswith(".msi"):
             score = 2
