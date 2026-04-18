@@ -2,6 +2,23 @@
 
 <!-- version list -->
 
+## v1.12.0 (2026-04-18)
+
+### Features
+
+- Add URL deduplication to image resolution process
+  ([`99f8788`](https://github.com/Hannes0730/Sticker-Hub/commit/99f8788384e03baefcf87bcb186d421d6283392c))
+
+- Add URL deduplication to image resolution process
+  ([`9b9bc75`](https://github.com/Hannes0730/Sticker-Hub/commit/9b9bc758460951ee346a33e9741a163ea6edeb7b))
+
+- Enhance URL filtering by adding additional query parameters to exclusion list
+  ([`c90e98c`](https://github.com/Hannes0730/Sticker-Hub/commit/c90e98caeed325a4f21766a710ce6291a53d1465))
+
+- Implement API-based sticker pack resolution and enhance URL filtering
+  ([`42654a1`](https://github.com/Hannes0730/Sticker-Hub/commit/42654a11650be6042977e3f058b204553eb00001))
+
+
 ## v1.11.1 (2026-04-18)
 
 ### Bug Fixes
