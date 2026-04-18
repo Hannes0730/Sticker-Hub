@@ -48,6 +48,24 @@ Both actions ask for confirmation before removing data.
 - Animations pause when the app is inactive or minimized.
 - Some platforms send animated files as static; use `Copy: GIF` for better compatibility.
 
+## Platform Compatibility Guide
+
+Different chat platforms handle pasted sticker files differently. Use this as a quick reference for the best copy mode per app.
+
+| Platform | Original | GIF | WebP |
+| :-- | :--: | :--: | :--: |
+| **Facebook Messenger** | ❌ No | ✅ Yes | ❌ No |
+| **Instagram** | ⚠️ Yes (BG) | ⚠️ Yes (BG) | ⚠️ Yes (BG) |
+| **Telegram** | ❌ No | ⚠️ Yes (BG) | ❌ No |
+| **Discord** | ❌ No | ✅ Yes | ✅ Yes |
+
+**Legend**
+- `✅ Yes`: Sticker is sent as animated on that platform.
+- `⚠️ Yes (BG)`: Sticker is sent as animated, but platform may force a solid background.
+- `❌ No`: Format is not reliably supported for direct paste/send and only resulted to a static image.
+
+> **Note:** `(BG)` means the platform adds a solid background color when pasted, so transparent edges may not be preserved.
+
 ## Sticker JSON Structure
 
 Stickers Hub supports both legacy flat format and nested pack format.

@@ -128,10 +128,10 @@ class MainWindow(QWidget):
 
         self.copy_format = QComboBox()
         self.copy_format.setObjectName("CopyFormatCombo")
-        self.copy_format.addItem("Copy: Auto (Compat)", "auto_compat")
         self.copy_format.addItem("Copy: Original", "original")
         self.copy_format.addItem("Copy: GIF", ".gif")
         self.copy_format.addItem("Copy: WebP", ".webp")
+        self.copy_format.setCurrentIndex(1)
         self.copy_format.setToolTip("Choose the format used when copying stickers.")
 
         self.version_badge = QLabel(f"v{self.app_version}")
@@ -557,8 +557,8 @@ class MainWindow(QWidget):
 
         selected_mode = str(self.copy_format.currentData())
         preferred_ext = selected_mode
-        if selected_mode == "auto_compat":
-            preferred_ext = ".gif" if card.is_animated else "original"
+        if preferred_ext not in {"original", ".gif", ".webp"}:
+            preferred_ext = "original"
 
         send_file, applied_preference = self.cache.create_send_copy(card.local_path, preferred_ext=preferred_ext)
         if not set_clipboard:
@@ -568,14 +568,6 @@ class MainWindow(QWidget):
         mime.setUrls([QUrl.fromLocalFile(str(send_file))])
         QApplication.clipboard().setMimeData(mime)
 
-        if selected_mode == "auto_compat":
-            if send_file.suffix.lower() == ".gif":
-                self.status.setText(f"Copied (Compat GIF): {send_file.name}")
-                self.status.setToolTip("Compatibility mode uses GIF for animated stickers.")
-            else:
-                self.status.setText(f"Copied (Compat): {send_file.name}")
-                self.status.setToolTip("")
-            return
 
         if preferred_ext == "original":
             if applied_preference:
