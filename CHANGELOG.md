@@ -2,6 +2,33 @@
 
 <!-- version list -->
 
+## v1.10.0 (2026-04-18)
+
+### Documentation
+
+- Update README with usage instructions and delete actions
+  ([`82c90cd`](https://github.com/Hannes0730/Sticker-Hub/commit/82c90cdb8c393e439e95a957b8a619c0f446871b))
+
+### Features
+
+- Add dedicated Stickerly provider for URL resolution
+  ([`3bf78da`](https://github.com/Hannes0730/Sticker-Hub/commit/3bf78da2551c84ad27b421e3a0c6ca22cac4b01f))
+
+- Add provider_generic module for improved functionality
+  ([`c11f292`](https://github.com/Hannes0730/Sticker-Hub/commit/c11f2923f9ced05f7cea17feafd17355a6ef2b60))
+
+- Add sigstick provider for image URL resolution
+  ([`4303822`](https://github.com/Hannes0730/Sticker-Hub/commit/4303822c0473661c048ce4ee98b3152f4ce5b91b))
+
+- Implement image URL extraction and normalization functionality
+  ([`93b70f9`](https://github.com/Hannes0730/Sticker-Hub/commit/93b70f97753f6f6082ba04df945d607082834774))
+
+### Refactoring
+
+- Simplify sticker URL resolution by consolidating provider logic
+  ([`dfc6dee`](https://github.com/Hannes0730/Sticker-Hub/commit/dfc6deefef7a2395bb5f7a787fe37287ea7e3f30))
+
+
 ## v1.9.0 (2026-04-18)
 
 ### Features
