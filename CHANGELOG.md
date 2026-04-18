@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v1.11.1 (2026-04-18)
+
+### Bug Fixes
+
+- Improve layout handling on resize events in main window
+  ([`a3da24e`](https://github.com/Hannes0730/Sticker-Hub/commit/a3da24ed9f40dfab5058dc516e226a49301d8e4f))
+
+- Optimize grid layout handling on card visibility changes
+  ([`73de8e6`](https://github.com/Hannes0730/Sticker-Hub/commit/73de8e67f22707ff3392e3155a65ef70e32a3065))
+
+
 ## v1.11.0 (2026-04-18)
 
 ### Documentation
