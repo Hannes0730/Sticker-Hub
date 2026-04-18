@@ -94,6 +94,8 @@ def _download_file(url: str, target_path: Path, progress_callback: ProgressCallb
 
 def _launch_installer(installer_path: Path) -> None:
     flags = 0
+    if hasattr(subprocess, "CREATE_NO_WINDOW"):
+        flags |= subprocess.CREATE_NO_WINDOW
     if hasattr(subprocess, "DETACHED_PROCESS"):
         flags |= subprocess.DETACHED_PROCESS
     if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
@@ -120,6 +122,8 @@ def _launch_zip_updater(zip_path: Path) -> None:
     script_path.write_text(script_content, encoding="utf-8")
 
     flags = 0
+    if hasattr(subprocess, "CREATE_NO_WINDOW"):
+        flags |= subprocess.CREATE_NO_WINDOW
     if hasattr(subprocess, "DETACHED_PROCESS"):
         flags |= subprocess.DETACHED_PROCESS
     if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
@@ -139,25 +143,41 @@ def _render_zip_updater_script(zip_path: str, app_dir: str, exe_path: str, pid: 
         f'set "EXE_PATH={exe_path}"',
         "set \"WORK_DIR=%TEMP%\\StickerHub\\update_work_%RANDOM%%RANDOM%\"",
         "set \"EXTRACT_DIR=%WORK_DIR%\\extract\"",
+        "set \"RETRY_COUNT=0\"",
+        "set \"MAX_RETRIES=45\"",
         "mkdir \"%EXTRACT_DIR%\" >nul 2>nul",
-        ":wait_loop",
-        "tasklist /FI \"PID eq %TARGET_PID%\" 2>nul | find \"%TARGET_PID%\" >nul",
-        "if not errorlevel 1 (",
-        "  timeout /t 1 /nobreak >nul",
-        "  goto wait_loop",
-        ")",
+        "timeout /t 1 /nobreak >nul",
         f"powershell -NoProfile -ExecutionPolicy Bypass -Command \"Expand-Archive -LiteralPath '{escaped_zip}' -DestinationPath '%EXTRACT_DIR%' -Force\"",
+        "if errorlevel 1 goto fail",
         "if exist \"%EXTRACT_DIR%\\StickerHub\\StickerHub.exe\" (",
         "  set \"SOURCE_DIR=%EXTRACT_DIR%\\StickerHub\"",
         ") else (",
         "  set \"SOURCE_DIR=%EXTRACT_DIR%\"",
         ")",
+        ":copy_retry",
         "robocopy \"%SOURCE_DIR%\" \"%APP_DIR%\" /E /R:2 /W:1 >nul",
+        "if errorlevel 8 (",
+        "  set /a RETRY_COUNT+=1",
+        "  if %RETRY_COUNT% GEQ %MAX_RETRIES% goto fail",
+        "  timeout /t 1 /nobreak >nul",
+        "  goto copy_retry",
+        ")",
+        "if not exist \"%EXE_PATH%\" goto fail",
         "start \"\" \"%EXE_PATH%\"",
         "rmdir /s /q \"%WORK_DIR%\" >nul 2>nul",
+        "del \"%ZIP_PATH%\" >nul 2>nul",
         "del \"%~f0\" >nul 2>nul",
+        "goto end",
+        ":fail",
+        "echo Sticker Hub update failed at %DATE% %TIME% > \"%TEMP%\\StickerHub\\update_error.log\"",
+        "echo zip=%ZIP_PATH% >> \"%TEMP%\\StickerHub\\update_error.log\"",
+        "echo app=%APP_DIR% >> \"%TEMP%\\StickerHub\\update_error.log\"",
+        "if exist \"%EXE_PATH%\" start \"\" \"%EXE_PATH%\"",
+        ":end",
         "endlocal",
     ]
     return "\r\n".join(lines) + "\r\n"
+
+
 
 
