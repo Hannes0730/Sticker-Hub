@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMenu,
     QMessageBox,
     QPushButton,
     QScrollArea,
@@ -25,7 +26,14 @@ from PySide6.QtWidgets import (
 from PySide6.QtWidgets import QApplication
 from PySide6.QtWidgets import QScroller
 
-from sticker_hub.models import Sticker, StickerCatalog, append_sticker_to_json, load_catalog_from_json
+from sticker_hub.models import (
+    Sticker,
+    StickerCatalog,
+    append_sticker_to_json,
+    delete_category_from_json,
+    delete_pack_from_json,
+    load_catalog_from_json,
+)
 from sticker_hub.services import StickerCache, StickerDownloadManager, resolve_sticker_urls, upgrade_sticker_urls_file
 from sticker_hub.ui.sticker_card import StickerCard
 from sticker_hub.ui.sticker_grid import StickerGrid
@@ -78,6 +86,7 @@ class MainWindow(QWidget):
         self.sidebar = QListWidget()
         self.sidebar.setObjectName("Sidebar")
         self.sidebar.setFixedWidth(220)
+        self.sidebar.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
 
         right = QWidget()
         right_layout = QVBoxLayout(right)
@@ -95,7 +104,13 @@ class MainWindow(QWidget):
         self.pack_filter.setObjectName("QualityModeCombo")
         self.pack_filter.setToolTip("Filter packs under the selected category.")
         self.pack_filter.setMinimumWidth(180)
+        self.pack_filter.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.pack_filter.hide()
+
+        self.delete_pack_button = QPushButton("Delete Pack")
+        self.delete_pack_button.setObjectName("ImportButton")
+        self.delete_pack_button.setToolTip("Delete the currently selected pack.")
+        self.delete_pack_button.hide()
 
         self.import_button = QPushButton("Import URL")
         self.import_button.setObjectName("ImportButton")
@@ -135,6 +150,7 @@ class MainWindow(QWidget):
 
         top_bar.addWidget(self.search, stretch=1)
         top_bar.addWidget(self.pack_filter)
+        top_bar.addWidget(self.delete_pack_button)
         top_bar.addWidget(self.quality_mode)
         top_bar.addWidget(self.copy_format)
         top_bar.addWidget(self.import_button)
@@ -152,8 +168,11 @@ class MainWindow(QWidget):
         self._set_cards_window_active(self.isActiveWindow())
 
         self.sidebar.currentItemChanged.connect(self._on_category_changed)
+        self.sidebar.customContextMenuRequested.connect(self._on_sidebar_context_menu)
         self.search.textChanged.connect(lambda _: self._apply_filters())
         self.pack_filter.currentIndexChanged.connect(self._on_pack_changed)
+        self.pack_filter.customContextMenuRequested.connect(self._on_pack_context_menu)
+        self.delete_pack_button.clicked.connect(self._delete_selected_pack)
         self.quality_mode.currentIndexChanged.connect(self._on_preview_quality_changed)
         self.import_button.clicked.connect(self._open_import_dialog)
         self.upgrade_urls_button.clicked.connect(self._upgrade_existing_urls)
@@ -244,6 +263,7 @@ class MainWindow(QWidget):
             if not packs:
                 self.current_pack = ALL_PACKS_OPTION
                 self.pack_filter.hide()
+                self.delete_pack_button.hide()
                 return
 
             self.pack_filter.addItem(ALL_PACKS_OPTION, ALL_PACKS_OPTION)
@@ -256,10 +276,89 @@ class MainWindow(QWidget):
                 current_index = 0
             self.pack_filter.setCurrentIndex(current_index)
             self.pack_filter.show()
+            self.delete_pack_button.show()
+
+        self._sync_pack_delete_button_state()
 
     def _on_pack_changed(self, _index: int) -> None:
         self.current_pack = str(self.pack_filter.currentData() or ALL_PACKS_OPTION)
+        self._sync_pack_delete_button_state()
         self._apply_filters()
+
+    def _sync_pack_delete_button_state(self) -> None:
+        can_delete = bool(self.current_pack and self.current_pack != ALL_PACKS_OPTION)
+        self.delete_pack_button.setEnabled(can_delete)
+
+    def _on_sidebar_context_menu(self, pos) -> None:
+        item = self.sidebar.itemAt(pos)
+        if not item or item.data(Qt.ItemDataRole.UserRole) != "category":
+            return
+
+        category = item.text()
+        if category in TOP_LEVEL_CATEGORIES:
+            return
+
+        menu = QMenu(self)
+        delete_action = menu.addAction(f"Delete category '{category}'")
+        selected_action = menu.exec(self.sidebar.mapToGlobal(pos))
+        if selected_action != delete_action:
+            return
+
+        confirm = QMessageBox.question(
+            self,
+            "Delete Category",
+            f"Delete category '{category}' and all of its packs/stickers?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        if delete_category_from_json(self.sticker_file, category):
+            self.status.setText(f"Deleted category '{category}'.")
+            self._reload_catalog()
+        else:
+            self.status.setText(f"Unable to delete category '{category}'.")
+
+    def _on_pack_context_menu(self, pos) -> None:
+        if self.current_category in TOP_LEVEL_CATEGORIES:
+            return
+
+        selected_pack = str(self.pack_filter.currentData() or "").strip()
+        if not selected_pack or selected_pack == ALL_PACKS_OPTION:
+            return
+
+        menu = QMenu(self)
+        delete_action = menu.addAction(f"Delete pack '{selected_pack}'")
+        selected_action = menu.exec(self.pack_filter.mapToGlobal(pos))
+        if selected_action != delete_action:
+            return
+
+        self._delete_selected_pack()
+
+    def _delete_selected_pack(self) -> None:
+        selected_pack = str(self.pack_filter.currentData() or "").strip()
+        if self.current_category in TOP_LEVEL_CATEGORIES:
+            return
+        if not selected_pack or selected_pack == ALL_PACKS_OPTION:
+            return
+
+        confirm = QMessageBox.question(
+            self,
+            "Delete Pack",
+            f"Delete pack '{selected_pack}' under '{self.current_category}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        if delete_pack_from_json(self.sticker_file, self.current_category, selected_pack):
+            self.current_pack = ALL_PACKS_OPTION
+            self.status.setText(f"Deleted pack '{selected_pack}'.")
+            self._reload_catalog()
+        else:
+            self.status.setText(f"Unable to delete pack '{selected_pack}'.")
 
     def _create_cards(self) -> None:
         self.cards_by_id = {}
@@ -605,7 +704,11 @@ class MainWindow(QWidget):
 
     def _reload_catalog(self) -> None:
         self.catalog = load_catalog_from_json(self.sticker_file)
-        self.selected_id = None
+        valid_ids = {sticker.sticker_id for sticker in self.catalog.stickers}
+        self.favorites.intersection_update(valid_ids)
+        self.recent = [sticker_id for sticker_id in self.recent if sticker_id in valid_ids]
+        if self.selected_id and self.selected_id not in valid_ids:
+            self.selected_id = None
         self._build_sidebar()
         self._create_cards()
         self._apply_filters()

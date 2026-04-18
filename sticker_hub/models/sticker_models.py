@@ -146,6 +146,43 @@ def append_sticker_to_json(
     return True
 
 
+def delete_category_from_json(path: Path, category: str) -> bool:
+    target = category.strip()
+    if not target:
+        return False
+
+    data = _load_json_object(path)
+    if target not in data:
+        return False
+
+    del data[target]
+    _atomic_write_json(path, data)
+    return True
+
+
+def delete_pack_from_json(path: Path, category: str, pack_name: str) -> bool:
+    target_category = category.strip()
+    target_pack = pack_name.strip()
+    if not target_category or not target_pack:
+        return False
+
+    data = _load_json_object(path)
+    category_node = data.get(target_category)
+    if not isinstance(category_node, dict):
+        return False
+    if target_pack not in category_node:
+        return False
+
+    del category_node[target_pack]
+    if not category_node:
+        del data[target_category]
+    else:
+        data[target_category] = category_node
+
+    _atomic_write_json(path, data)
+    return True
+
+
 def _parse_sticker(
     parent_category: str,
     item: dict[str, Any],
