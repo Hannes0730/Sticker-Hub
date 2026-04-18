@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.13.0 (2026-04-18)
+
+### Chores
+
+- Update dependencies and version for sticker-hub package
+  ([`33d5647`](https://github.com/Hannes0730/Sticker-Hub/commit/33d56479ad52023f0056650be7bdd1e2d8ff903e))
+
+### Features
+
+- Add update check functionality with user prompts for new versions
+  ([`a1b6c40`](https://github.com/Hannes0730/Sticker-Hub/commit/a1b6c40b7e6abc85e0bd4f3415860ddef384edff))
+
+- Add update service functions to module exports
+  ([`01ef56a`](https://github.com/Hannes0730/Sticker-Hub/commit/01ef56a0d30d2eac92bd986009da47f0a9da943a))
+
+- Implement update service to check for latest releases
+  ([`cc53df7`](https://github.com/Hannes0730/Sticker-Hub/commit/cc53df76f68229053aefeb974dda46579b4fda10))
+
+
 ## v1.12.0 (2026-04-18)
 
 ### Features
