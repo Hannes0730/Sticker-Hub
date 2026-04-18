@@ -58,7 +58,7 @@ class MainWindow(QWidget):
         self.cards_by_id: dict[str, StickerCard] = {}
         self.preview_quality = "high"
 
-        self.setWindowTitle(f"Sticker Board v{self.app_version}")
+        self.setWindowTitle(f"Sticker Hub v{self.app_version}")
         self.resize(1220, 760)
 
         self.downloader.set_thumbnail_size(PREVIEW_QUALITY_SIZES[self.preview_quality])
