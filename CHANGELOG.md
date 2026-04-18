@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.7.2 (2026-04-18)
+
+### Bug Fixes
+
+- Update window title from 'Sticker Board' to 'Sticker Hub'
+  ([`07593b9`](https://github.com/Hannes0730/Sticker-Hub/commit/07593b95350d5f1234f4f017d83ba0aa6d3fe9da))
+
+### Chores
+
+- Add MIT License file
+  ([`28b9f97`](https://github.com/Hannes0730/Sticker-Hub/commit/28b9f97b79e6f0173991ea9f70f8e13c87fe4e9f))
+
+### Documentation
+
+- Update README to reflect app name change from 'Sticker Board' to 'Stickers Hub'
+  ([`5a8d59b`](https://github.com/Hannes0730/Sticker-Hub/commit/5a8d59bc173ed0d625cf85d365ecf06cc8ffe473))
+
+
 ## v1.7.1 (2026-04-17)
 
 ### Bug Fixes
