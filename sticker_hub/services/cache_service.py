@@ -153,49 +153,45 @@ class StickerCache:
         output.save(destination, format="PNG", optimize=True)
 
     def _save_as_gif(self, image: Image.Image, destination: Path, animated: bool, upscale_factor: int) -> None:
-        if not animated:
-            output = image.convert("RGBA")
+        def process_frame(img: Image.Image) -> Image.Image:
+            # 1. Convert to RGBA and resize if needed
+            rgba = img.convert("RGBA")
             if upscale_factor > 1:
-                output = self._resize_image(output, upscale_factor)
-            # GIF is limited to 256 colors; dithering helps reduce harsh banding.
-            output.quantize(
-                colors=256,
-                method=Image.Quantize.FASTOCTREE,
-                dither=Image.Dither.FLOYDSTEINBERG,
-            ).save(destination, format="GIF")
+                rgba = self._resize_image(rgba, upscale_factor)
+
+            # 2. Extract the alpha (transparency) channel
+            alpha = rgba.getchannel("A")
+
+            # 3. Convert to 255 colors, leaving index 255 open for our "invisible" color
+            p_img = rgba.convert("RGB").convert("P", palette=Image.ADAPTIVE, colors=255)
+
+            # 4. Find all transparent pixels (alpha < 128) and force them to index 255
+            mask = Image.eval(alpha, lambda a: 255 if a < 128 else 0)
+            p_img.paste(255, mask)
+
+            return p_img
+
+        if not animated:
+            output = process_frame(image)
+            output.save(destination, format="GIF", transparency=255)
             return
 
         frames: list[Image.Image] = []
         durations: list[int] = []
         for frame in ImageSequence.Iterator(image):
-            rgba = frame.convert("RGBA")
-            if upscale_factor > 1:
-                rgba = self._resize_image(rgba, upscale_factor)
-            frames.append(rgba)
+            frames.append(process_frame(frame))
             durations.append(int(frame.info.get("duration", image.info.get("duration", 80))))
 
-        first = frames[0].quantize(
-            colors=256,
-            method=Image.Quantize.FASTOCTREE,
-            dither=Image.Dither.FLOYDSTEINBERG,
-        )
-        rest = [
-            frame.quantize(
-                colors=256,
-                method=Image.Quantize.FASTOCTREE,
-                dither=Image.Dither.FLOYDSTEINBERG,
-            )
-            for frame in frames[1:]
-        ]
-        first.save(
+        frames[0].save(
             destination,
             format="GIF",
             save_all=True,
-            append_images=rest,
+            append_images=frames[1:],
             loop=image.info.get("loop", 0),
             duration=durations,
             disposal=2,
             optimize=False,
+            transparency=255
         )
 
     def _save_as_webp(self, image: Image.Image, destination: Path, animated: bool, upscale_factor: int) -> None:
