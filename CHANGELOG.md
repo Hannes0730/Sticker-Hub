@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.11.0 (2026-04-18)
+
+### Documentation
+
+- Add platform compatibility guide for sticker formats
+  ([`6364239`](https://github.com/Hannes0730/Sticker-Hub/commit/63642391bed3ef8d5864012ea2a108bd58e97ce4))
+
+### Features
+
+- Enhance GIF saving with transparency support and frame processing
+  ([`dff3997`](https://github.com/Hannes0730/Sticker-Hub/commit/dff3997102eabed9c2740cb0b5149878f4c9a5af))
+
+### Refactoring
+
+- Simplify copy format handling and remove compatibility mode
+  ([`56ca6ab`](https://github.com/Hannes0730/Sticker-Hub/commit/56ca6ab4861e76966726411358540aa433ae1f2f))
+
+
 ## v1.10.0 (2026-04-18)
 
 ### Documentation
