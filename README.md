@@ -3,7 +3,7 @@
 <p align="center">
   <img alt="Python" src="https://img.shields.io/badge/Python-3.13%2B-3776AB?logo=python&logoColor=white" />
   <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white" />
-  <img alt="License" src="https://img.shields.io/github/license/Hannes0730/Sticker-Hub" />
+  <img alt="License" src="https://img.shields.io/github/license/Hannes0730/Sticker-Hub?color=green" />
   <img alt="Latest Release" src="https://img.shields.io/github/v/release/Hannes0730/Sticker-Hub?display_name=tag" />
   <img alt="Open Issues" src="https://img.shields.io/github/issues/Hannes0730/Sticker-Hub" />
   <img alt="Total Downloads" src="https://img.shields.io/github/downloads/Hannes0730/Sticker-Hub/total" />
