@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.14.0 (2026-04-18)
+
+### Bug Fixes
+
+- Update asset ranking logic for in-app updates to prioritize ZIP files
+  ([`c5d73a1`](https://github.com/Hannes0730/Sticker-Hub/commit/c5d73a10861aa74d3545464da123b9c676368f6e))
+
+### Features
+
+- Enhance in-app update process with installation prompts and progress feedback
+  ([`88d6c38`](https://github.com/Hannes0730/Sticker-Hub/commit/88d6c38aa169eaa31a45998f207b329bdf81fe63))
+
+- Expose update installation functions in module exports
+  ([`a569464`](https://github.com/Hannes0730/Sticker-Hub/commit/a569464bae0884a5157cc46a2b6b5c19594b7ba2))
+
+- Implement in-app update service for Windows
+  ([`ea8d078`](https://github.com/Hannes0730/Sticker-Hub/commit/ea8d078c2cdac29e7e0dd793ffaba03808a3328d))
+
+
 ## v1.13.1 (2026-04-18)
 
 ### Bug Fixes
