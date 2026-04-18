@@ -146,6 +146,7 @@ class MainWindow(QWidget):
 
         self.grid_widget = StickerGrid()
         self.scroll.setWidget(self.grid_widget)
+        self.scroll.viewport().installEventFilter(self)
         QScroller.grabGesture(self.scroll.viewport(), QScroller.LeftMouseButtonGesture)
 
         top_bar.addWidget(self.search, stretch=1)
@@ -186,7 +187,14 @@ class MainWindow(QWidget):
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
+        self.grid_widget.update_layout_for_width(self.scroll.viewport().width())
         self._schedule_animation_budget_update()
+
+    def eventFilter(self, watched: object, event: QEvent) -> bool:  # noqa: N802
+        if watched is self.scroll.viewport() and event.type() == QEvent.Type.Resize:
+            self.grid_widget.update_layout_for_width(self.scroll.viewport().width())
+            self._schedule_animation_budget_update()
+        return super().eventFilter(watched, event)
 
     def _schedule_animation_budget_update(self) -> None:
         if self._animation_budget_timer.isActive():
@@ -411,7 +419,9 @@ class MainWindow(QWidget):
     def _apply_filters(self) -> None:
         query = self.search.text()
 
-        if self.current_category == "Favorites":
+        if self.current_category == "All":
+            stickers = list(self.catalog.stickers)
+        elif self.current_category == "Favorites":
             stickers = [
                 self.catalog.by_id(sticker_id)
                 for sticker_id in self.favorites
@@ -445,6 +455,7 @@ class MainWindow(QWidget):
                 visible_cards.append(card)
 
         self.grid_widget.set_cards(visible_cards)
+        self.grid_widget.update_layout_for_width(self.scroll.viewport().width())
         self.status.setText(f"{len(visible_cards)} sticker(s)")
         self._schedule_animation_budget_update()
         self._queue_visible_downloads()
