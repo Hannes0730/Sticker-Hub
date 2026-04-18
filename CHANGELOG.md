@@ -2,6 +2,31 @@
 
 <!-- version list -->
 
+## v1.8.0 (2026-04-18)
+
+### Bug Fixes
+
+- Improve app version retrieval with error handling
+  ([`d2cd56e`](https://github.com/Hannes0730/Sticker-Hub/commit/d2cd56e079e21208dfa58b640f8972ae09c03c9c))
+
+### Features
+
+- Add method to retrieve visible sticker cards from the grid
+  ([`be90fdc`](https://github.com/Hannes0730/Sticker-Hub/commit/be90fdcffdd1c16faae89f1aab29b6bb538cd73e))
+
+- Add pack filter and animation budget management to main window
+  ([`806be50`](https://github.com/Hannes0730/Sticker-Hub/commit/806be502a5ab1960a2c96cb9ba45e8f19fa8fb5a))
+
+- Enhance image URL handling with animated format detection
+  ([`edb4519`](https://github.com/Hannes0730/Sticker-Hub/commit/edb45199caa5b0638692625a8c82b05e47942c2d))
+
+- Enhance sticker card animation handling with state synchronization
+  ([`d375606`](https://github.com/Hannes0730/Sticker-Hub/commit/d375606a728247f7424503f2b01fcbbcbe93a4b4))
+
+- Enhance sticker parsing and storage with pack support
+  ([`b875ae0`](https://github.com/Hannes0730/Sticker-Hub/commit/b875ae08709e2ea981fd04c9ebb504f48377499c))
+
+
 ## v1.7.2 (2026-04-18)
 
 ### Bug Fixes
