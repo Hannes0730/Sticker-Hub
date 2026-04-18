@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.13.1 (2026-04-18)
+
+### Bug Fixes
+
+- Normalize capitalization for category, name, and pack name fields
+  ([`8f94ed9`](https://github.com/Hannes0730/Sticker-Hub/commit/8f94ed9880038b0e1b6a7d36e425722e509d35de))
+
+
 ## v1.13.0 (2026-04-18)
 
 ### Chores
