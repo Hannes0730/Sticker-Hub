@@ -26,6 +26,7 @@ class StickerCard(QFrame):
         self.is_favorite = False
         self._drag_start = QPoint()
         self._base_pixmap: QPixmap | None = None
+        self._fitted_base_pixmap: QPixmap | None = None
         self._movie: QMovie | None = None
         self._selected = False
         self._can_try_movie = False
@@ -35,6 +36,8 @@ class StickerCard(QFrame):
         self._fallback_frames: list[QPixmap] = []
         self._fallback_delays: list[int] = []
         self._fallback_idx = 0
+        self._window_active = True
+        self._animation_allowed = True
 
         self.setObjectName("StickerCard")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -58,19 +61,25 @@ class StickerCard(QFrame):
         self.is_animated = animated
         self._can_try_movie = animated or local_path.suffix.lower() in {".gif", ".webp"}
         self._base_pixmap = pixmap
-        self.preview.setPixmap(self._fit_preview(pixmap))
+        self._fitted_base_pixmap = self._fit_preview(pixmap)
+        self.preview.setPixmap(self._fitted_base_pixmap)
         self.preview.setText("")
+        self._sync_animation_state()
+
+    def set_window_active(self, active: bool) -> None:
+        self._window_active = active
+        self._sync_animation_state()
+
+    def set_animation_allowed(self, allowed: bool) -> None:
+        self._animation_allowed = allowed
+        self._sync_animation_state()
 
     def set_selected(self, selected: bool) -> None:
         self._selected = selected
         self.setProperty("selected", selected)
         self.style().unpolish(self)
         self.style().polish(self)
-
-        if selected:
-            self._start_preview_animation()
-        else:
-            self._stop_preview_animation()
+        self._sync_animation_state()
 
     def set_error(self, message: str) -> None:
         self.preview.setText("Failed")
@@ -78,13 +87,17 @@ class StickerCard(QFrame):
 
     def enterEvent(self, event) -> None:  # noqa: N802
         super().enterEvent(event)
-        if not self._selected:
-            self._start_preview_animation()
 
     def leaveEvent(self, event) -> None:  # noqa: N802
         super().leaveEvent(event)
-        if not self._selected:
-            self._stop_preview_animation()
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        self._sync_animation_state()
+
+    def hideEvent(self, event) -> None:  # noqa: N802
+        super().hideEvent(event)
+        self._sync_animation_state()
 
     def mousePressEvent(self, event) -> None:  # noqa: N802
         if event.button() == Qt.MouseButton.LeftButton:
@@ -148,11 +161,17 @@ class StickerCard(QFrame):
                 self._movie_failed = True
                 self._start_fallback_animation()
                 return
+            self._movie.setCacheMode(QMovie.CacheMode.CacheAll)
             self._movie.setScaledSize(self.preview.size())
         # QLabel loses the movie binding after setPixmap(); reattach on every start.
         if self.preview.movie() is not self._movie:
             self.preview.setMovie(self._movie)
-        if self._movie and self._movie.state() != QMovie.MovieState.Running:
+        if not self._movie:
+            return
+
+        if self._movie.state() == QMovie.MovieState.Paused:
+            self._movie.setPaused(False)
+        elif self._movie.state() != QMovie.MovieState.Running:
             self._movie.start()
             # frameCount() can be -1 (unknown) for valid animations, so only
             # degrade when a concrete single/empty frame count is reported.
@@ -167,9 +186,9 @@ class StickerCard(QFrame):
         if self._fallback_timer.isActive():
             self._fallback_timer.stop()
         if self._movie and self._movie.state() == QMovie.MovieState.Running:
-            self._movie.stop()
-        if self._base_pixmap:
-            self.preview.setPixmap(self._fit_preview(self._base_pixmap))
+            self._movie.setPaused(True)
+        if self._fitted_base_pixmap:
+            self.preview.setPixmap(self._fitted_base_pixmap)
 
     def _start_fallback_animation(self) -> None:
         if not self.local_path:
@@ -230,6 +249,14 @@ class StickerCard(QFrame):
         self._fallback_frames = []
         self._fallback_delays = []
         self._fallback_idx = 0
+        self._fitted_base_pixmap = None
+
+    def _sync_animation_state(self) -> None:
+        should_animate = self._window_active and self._animation_allowed and self.isVisible()
+        if should_animate:
+            self._start_preview_animation()
+        else:
+            self._stop_preview_animation()
 
     def _fit_preview(self, pixmap: QPixmap) -> QPixmap:
         return pixmap.scaled(
