@@ -10,11 +10,6 @@ DISTRIBUTION_NAME = "sticker-hub"
 
 
 def get_app_version() -> str:
-    try:
-        return metadata.version(DISTRIBUTION_NAME)
-    except metadata.PackageNotFoundError:
-        pass
-
     candidate_paths = [
         Path(__file__).resolve().parents[1] / "pyproject.toml",
         Path(__file__).resolve().parents[2] / "pyproject.toml",
@@ -34,6 +29,11 @@ def get_app_version() -> str:
                 return version
         except Exception:
             continue
+
+    try:
+        return metadata.version(DISTRIBUTION_NAME)
+    except metadata.PackageNotFoundError:
+        pass
 
     return "dev"
 

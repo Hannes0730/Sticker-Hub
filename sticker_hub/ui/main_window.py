@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from PySide6.QtCore import QMimeData, Qt, QUrl
+from PySide6.QtCore import QEvent, QMimeData, QSignalBlocker, Qt, QTimer, QUrl
 from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtWidgets import (
     QComboBox,
@@ -37,8 +37,11 @@ PREVIEW_QUALITY_SIZES: dict[str, tuple[int, int]] = {
     "high": (256, 256),
 }
 
+ANIMATION_BUDGET_INTERVAL_MS = 60
+
 HIDDEN_NAV_CATEGORIES = {"Animated", "Favorite Packs", "Favorites Pack", "Imported"}
 TOP_LEVEL_CATEGORIES = ["All", "Favorites", "Recent"]
+ALL_PACKS_OPTION = "All Packs"
 
 
 class MainWindow(QWidget):
@@ -53,10 +56,15 @@ class MainWindow(QWidget):
         self.favorites: set[str] = set()
         self.recent: list[str] = []
         self.current_category = "All"
+        self.current_pack = ALL_PACKS_OPTION
         self.selected_id: str | None = None
 
         self.cards_by_id: dict[str, StickerCard] = {}
         self.preview_quality = "high"
+        self._animation_budget_timer = QTimer(self)
+        self._animation_budget_timer.setSingleShot(True)
+        self._animation_budget_timer.setInterval(ANIMATION_BUDGET_INTERVAL_MS)
+        self._animation_budget_timer.timeout.connect(self._update_card_animation_budget)
 
         self.setWindowTitle(f"Sticker Hub v{self.app_version}")
         self.resize(1220, 760)
@@ -82,6 +90,12 @@ class MainWindow(QWidget):
 
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search stickers...")
+
+        self.pack_filter = QComboBox()
+        self.pack_filter.setObjectName("QualityModeCombo")
+        self.pack_filter.setToolTip("Filter packs under the selected category.")
+        self.pack_filter.setMinimumWidth(180)
+        self.pack_filter.hide()
 
         self.import_button = QPushButton("Import URL")
         self.import_button.setObjectName("ImportButton")
@@ -120,6 +134,7 @@ class MainWindow(QWidget):
         QScroller.grabGesture(self.scroll.viewport(), QScroller.LeftMouseButtonGesture)
 
         top_bar.addWidget(self.search, stretch=1)
+        top_bar.addWidget(self.pack_filter)
         top_bar.addWidget(self.quality_mode)
         top_bar.addWidget(self.copy_format)
         top_bar.addWidget(self.import_button)
@@ -134,36 +149,52 @@ class MainWindow(QWidget):
 
         self._build_sidebar()
         self._create_cards()
+        self._set_cards_window_active(self.isActiveWindow())
 
         self.sidebar.currentItemChanged.connect(self._on_category_changed)
         self.search.textChanged.connect(lambda _: self._apply_filters())
+        self.pack_filter.currentIndexChanged.connect(self._on_pack_changed)
         self.quality_mode.currentIndexChanged.connect(self._on_preview_quality_changed)
         self.import_button.clicked.connect(self._open_import_dialog)
         self.upgrade_urls_button.clicked.connect(self._upgrade_existing_urls)
         self.downloader.sticker_ready.connect(self._on_sticker_ready)
         self.downloader.sticker_failed.connect(self._on_sticker_failed)
+        self.scroll.verticalScrollBar().valueChanged.connect(lambda _: self._schedule_animation_budget_update())
+        self.scroll.horizontalScrollBar().valueChanged.connect(lambda _: self._schedule_animation_budget_update())
 
         self._apply_filters()
         self._queue_visible_downloads()
 
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._schedule_animation_budget_update()
+
+    def _schedule_animation_budget_update(self) -> None:
+        if self._animation_budget_timer.isActive():
+            self._animation_budget_timer.stop()
+        self._animation_budget_timer.start()
+
     def _build_sidebar(self) -> None:
-        self.sidebar.clear()
+        with QSignalBlocker(self.sidebar):
+            self.sidebar.clear()
 
-        self._add_sidebar_group_header("Quick Access")
-        for category in TOP_LEVEL_CATEGORIES:
-            self._add_sidebar_entry(category)
+            self._add_sidebar_group_header("Quick Access")
+            for category in TOP_LEVEL_CATEGORIES:
+                self._add_sidebar_entry(category)
 
-        self._add_sidebar_group_header("Custom Packs")
-        for category in self._custom_pack_categories():
-            self._add_sidebar_entry(category)
+            self._add_sidebar_group_header("Categories")
+            for category in self._custom_pack_categories():
+                self._add_sidebar_entry(category)
 
-        if self.sidebar.count() > 0:
-            selected_item = self._find_sidebar_item(self.current_category)
-            if selected_item is None:
-                selected_item = self._find_sidebar_item("All")
-                self.current_category = "All"
-            if selected_item is not None:
-                self.sidebar.setCurrentItem(selected_item)
+            if self.sidebar.count() > 0:
+                selected_item = self._find_sidebar_item(self.current_category)
+                if selected_item is None:
+                    selected_item = self._find_sidebar_item("All")
+                    self.current_category = "All"
+                if selected_item is not None:
+                    self.sidebar.setCurrentItem(selected_item)
+
+        self._sync_pack_filter_for_category()
 
     def _add_sidebar_group_header(self, label: str) -> None:
         item = QListWidgetItem(label)
@@ -190,12 +221,45 @@ class MainWindow(QWidget):
         return None
 
     def _custom_pack_categories(self) -> list[str]:
-        custom_categories = [
-            category
-            for category in self.catalog.categories
-            if category not in TOP_LEVEL_CATEGORIES and category not in HIDDEN_NAV_CATEGORIES
-        ]
-        return sorted(custom_categories, key=str.casefold)
+        parents = {
+            sticker.parent_category.strip() or sticker.category.strip()
+            for sticker in self.catalog.stickers
+            if (sticker.parent_category.strip() or sticker.category.strip())
+            not in set(TOP_LEVEL_CATEGORIES).union(HIDDEN_NAV_CATEGORIES)
+        }
+        return sorted(parents, key=str.casefold)
+
+    def _packs_for_category(self, parent_category: str) -> list[str]:
+        packs = {
+            sticker.pack_name.strip()
+            for sticker in self.catalog.stickers
+            if sticker.parent_category == parent_category and sticker.pack_name.strip()
+        }
+        return sorted(packs, key=str.casefold)
+
+    def _sync_pack_filter_for_category(self) -> None:
+        packs = [] if self.current_category in TOP_LEVEL_CATEGORIES else self._packs_for_category(self.current_category)
+        with QSignalBlocker(self.pack_filter):
+            self.pack_filter.clear()
+            if not packs:
+                self.current_pack = ALL_PACKS_OPTION
+                self.pack_filter.hide()
+                return
+
+            self.pack_filter.addItem(ALL_PACKS_OPTION, ALL_PACKS_OPTION)
+            for pack in packs:
+                self.pack_filter.addItem(pack, pack)
+
+            current_index = self.pack_filter.findData(self.current_pack)
+            if current_index < 0:
+                self.current_pack = ALL_PACKS_OPTION
+                current_index = 0
+            self.pack_filter.setCurrentIndex(current_index)
+            self.pack_filter.show()
+
+    def _on_pack_changed(self, _index: int) -> None:
+        self.current_pack = str(self.pack_filter.currentData() or ALL_PACKS_OPTION)
+        self._apply_filters()
 
     def _create_cards(self) -> None:
         self.cards_by_id = {}
@@ -209,6 +273,29 @@ class MainWindow(QWidget):
             card.favorite_toggled.connect(self._toggle_favorite)
             self.cards_by_id[sticker.sticker_id] = card
 
+    def _set_cards_window_active(self, active: bool) -> None:
+        for card in self.cards_by_id.values():
+            card.set_window_active(active)
+        self._schedule_animation_budget_update()
+
+    def changeEvent(self, event) -> None:  # noqa: N802
+        if event.type() == QEvent.Type.ActivationChange:
+            self._set_cards_window_active(self.isActiveWindow())
+        super().changeEvent(event)
+
+    def _update_card_animation_budget(self) -> None:
+        visible_cards = self.grid_widget.visible_cards()
+        if not visible_cards:
+            return
+
+        if not self.isActiveWindow() or self.isMinimized():
+            for card in visible_cards:
+                card.set_animation_allowed(False)
+            return
+        for card in visible_cards:
+            should_animate = card.isVisible() and bool(card.local_path) and card.is_animated
+            card.set_animation_allowed(should_animate)
+
     def _on_category_changed(self, current: QListWidgetItem, _previous: QListWidgetItem) -> None:
         if not current:
             return
@@ -218,6 +305,8 @@ class MainWindow(QWidget):
                 self.sidebar.setCurrentItem(fallback)
             return
         self.current_category = current.text()
+        self.current_pack = ALL_PACKS_OPTION
+        self._sync_pack_filter_for_category()
         self._apply_filters()
 
     def _apply_filters(self) -> None:
@@ -236,8 +325,13 @@ class MainWindow(QWidget):
                 if self.catalog.by_id(sticker_id)
             ]
         else:
-            selected_category = None if self.current_category == "All" else self.current_category
-            stickers = self.catalog.filtered(selected_category, query)
+            stickers = [
+                sticker
+                for sticker in self.catalog.stickers
+                if (sticker.parent_category.strip() or sticker.category.strip()) == self.current_category
+            ]
+            if self.current_pack != ALL_PACKS_OPTION:
+                stickers = [sticker for sticker in stickers if sticker.pack_name == self.current_pack]
 
         visible_cards = []
         for sticker in stickers:
@@ -247,10 +341,13 @@ class MainWindow(QWidget):
                 probe = f"{sticker.label} {sticker.category}".lower()
                 if query.strip().lower() not in probe:
                     continue
-            visible_cards.append(self.cards_by_id[sticker.sticker_id])
+            card = self.cards_by_id.get(sticker.sticker_id)
+            if card:
+                visible_cards.append(card)
 
         self.grid_widget.set_cards(visible_cards)
         self.status.setText(f"{len(visible_cards)} sticker(s)")
+        self._schedule_animation_budget_update()
         self._queue_visible_downloads()
 
     def _queue_visible_downloads(self) -> None:
@@ -265,6 +362,7 @@ class MainWindow(QWidget):
             return
         pixmap = QPixmap.fromImage(payload.thumbnail)
         card.set_thumbnail(pixmap, Path(payload.local_path), payload.animated)
+        self._schedule_animation_budget_update()
 
     def _on_sticker_failed(self, sticker_id: str, message: str) -> None:
         card = self.cards_by_id.get(sticker_id)
@@ -328,12 +426,18 @@ class MainWindow(QWidget):
         self.cache.open_location(card.local_path)
 
     def _toggle_favorite(self, sticker_id: str) -> None:
+        card = self.cards_by_id.get(sticker_id)
+        if not card:
+            # Guard against stale IDs from pre-reload card instances.
+            self.favorites.discard(sticker_id)
+            return
+
         if sticker_id in self.favorites:
             self.favorites.remove(sticker_id)
-            self.cards_by_id[sticker_id].is_favorite = False
+            card.is_favorite = False
         else:
             self.favorites.add(sticker_id)
-            self.cards_by_id[sticker_id].is_favorite = True
+            card.is_favorite = True
 
         if self.current_category == "Favorites":
             self._apply_filters()
@@ -343,8 +447,9 @@ class MainWindow(QWidget):
             self.cards_by_id[self.selected_id].set_selected(False)
 
         self.selected_id = sticker_id
-        if sticker_id in self.cards_by_id:
-            self.cards_by_id[sticker_id].set_selected(True)
+        card = self.cards_by_id.get(sticker_id)
+        if card:
+            card.set_selected(True)
 
     def _copy_sticker_to_send(self, sticker_id: str, set_clipboard: bool) -> None:
         card = self.cards_by_id.get(sticker_id)
@@ -406,8 +511,10 @@ class MainWindow(QWidget):
         source_input.setPlaceholderText("https://... (pack page or direct image URL)")
 
         category_input = QLineEdit()
-        category_input.setPlaceholderText("Imported")
-        category_input.setText("Imported")
+        category_input.setPlaceholderText("Cats")
+
+        pack_input = QLineEdit()
+        pack_input.setPlaceholderText("Nailong Pack")
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(dialog.accept)
@@ -415,6 +522,7 @@ class MainWindow(QWidget):
 
         form.addRow("Source URL", source_input)
         form.addRow("Category", category_input)
+        form.addRow("Pack Name", pack_input)
         form.addWidget(buttons)
 
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -422,13 +530,14 @@ class MainWindow(QWidget):
 
         source_url = source_input.text().strip()
         category = category_input.text().strip() or "Imported"
+        pack_name = pack_input.text().strip() or "Imported Pack"
         if not source_url:
             QMessageBox.warning(self, "Import failed", "Please enter a source URL.")
             return
 
-        self._import_from_url(source_url, category)
+        self._import_from_url(source_url, category, pack_name)
 
-    def _import_from_url(self, source_url: str, category: str) -> None:
+    def _import_from_url(self, source_url: str, category: str, pack_name: str) -> None:
         self.import_button.setEnabled(False)
         self.upgrade_urls_button.setEnabled(False)
         self.status.setText("Importing stickers...")
@@ -445,7 +554,14 @@ class MainWindow(QWidget):
             imported_count = 0
             skipped_count = 0
             for image_url in resolved_urls:
-                was_added = append_sticker_to_json(self.sticker_file, category, image_url, "")
+                was_added = append_sticker_to_json(
+                    self.sticker_file,
+                    category,
+                    image_url,
+                    "",
+                    pack_name=pack_name,
+                    pack_url=source_url,
+                )
                 if was_added:
                     imported_count += 1
                 else:
@@ -454,10 +570,10 @@ class MainWindow(QWidget):
             self._reload_catalog()
             if skipped_count:
                 self.status.setText(
-                    f"Imported {imported_count} sticker(s), skipped {skipped_count} duplicate(s) in '{category}'."
+                    f"Imported {imported_count} sticker(s), skipped {skipped_count} duplicate(s) in '{category} / {pack_name}'."
                 )
             else:
-                self.status.setText(f"Imported {imported_count} sticker(s) into '{category}'.")
+                self.status.setText(f"Imported {imported_count} sticker(s) into '{category} / {pack_name}'.")
         except Exception as exc:
             QMessageBox.critical(self, "Import failed", str(exc))
             self.status.setText("Import failed.")

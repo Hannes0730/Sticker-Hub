@@ -21,6 +21,9 @@ class StickerGrid(QWidget):
         self._cards = cards
         self._rebuild_grid()
 
+    def visible_cards(self) -> list[StickerCard]:
+        return list(self._cards)
+
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         self._rebuild_grid()
