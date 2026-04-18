@@ -1,107 +1,84 @@
-# Sticker Board (PySide6)
+<h1 align="center">Stickers Hub</h1>
 
-Modern desktop sticker manager inspired by Discord's sticker picker.
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.13%2B-3776AB?logo=python&logoColor=white" />
+  <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/github/license/Hannes0730/Sticker-Hub" />
+  <img alt="Latest Release" src="https://img.shields.io/github/v/release/Hannes0730/Sticker-Hub?display_name=tag" />
+  <img alt="Open Issues" src="https://img.shields.io/github/issues/Hannes0730/Sticker-Hub" />
+</p>
 
-## Features
+<img src="assets/icon.png" alt="Stickers Hub Icon" width="360" />
 
-- Dark modern UI with sidebar categories, search, and responsive sticker grid
-- Rounded sticker cards with hover/selection visuals
-- Async downloads (`QThreadPool`) so the UI stays responsive
-- Local cache with duplicate URL prevention on import
-- PNG/JPG/GIF/WebP support with animated preview for GIF/WebP (`QMovie`)
-- Drag-and-drop as local file URL (file path), compatible with apps like Discord
-- Left click copies a send-ready file URL; right click shows Copy/Save As/Open Folder
-- Copy format selector (`Original`, `GIF`, `WebP`) with fallback to original if conversion fails
-- Optional Favorites and Recent categories
+Stickers Hub is a desktop app that collects stickers from sources like SigStick, Sticker.ly, and more. Pick a sticker, click once, and it is copied so you can paste it directly into Messenger, Instagram, Facebook, Telegram, and similar platforms.
 
-## Sticker Data Format
+If an animated sticker is sent as a static image on a platform, switch copy mode to GIF for better animation compatibility.
 
-`stickers.json`
+## What You Can Do
 
-```json
-{
-  "CategoryName": [
-    {
-      "name": "optional",
-      "image_url": "https://..."
-    }
-  ]
-}
-```
+- Import sticker packs from URLs
+- Organize stickers into categories
+- Click a sticker to copy it instantly
+- Drag stickers into supported apps
+- Convert copy output to `Original`, `GIF`, or `WebP`
+- Keep imports persistent even if `%TEMP%` is cleared
 
-## Runtime Data Location
+## Quick Start (For Users)
 
-- Runtime catalog is auto-created at `~/Documents/StickerHub/stickers.json`.
-- Windows example: `C:\Users\<you>\Documents\StickerHub\stickers.json`.
-- On first run, this file is seeded from bundled/project `stickers.json` (if available).
-- Optional override for advanced users: set `STICKER_HUB_DATA_DIR`.
+1. Open Stickers Hub.
+2. Click `Import URL`.
+3. Paste a sticker pack link.
+4. Open a category and click a sticker to copy.
+5. Paste into your chat app.
 
-## Run From Source
+## If Animated Stickers Become Static
+
+Some platforms do not play all animated formats consistently.
+
+- Set copy mode to `GIF` for better compatibility.
+- If quality is more important and the platform supports it, try `Original` or `WebP`.
+
+## Supported Formats
+
+- PNG
+- JPG/JPEG
+- GIF
+- WebP
+
+## Data Locations
+
+- Persistent sticker catalog:
+  - `C:\Users\<you>\Documents\StickerHub\stickers.json`
+- Download/cache files (safe to clear):
+  - `%TEMP%\StickerHub`
+
+You can clear `%TEMP%` anytime; Stickers Hub will re-download cached files as needed while keeping imported URLs in `Documents`.
+
+## Install and Run From Source
 
 ```powershell
 python -m pip install -e .
 python .\main.py
 ```
 
-## Build EXE (Windows)
-
-Build always targets project-local `dist` and `build`.
+## Build Windows EXE
 
 ```powershell
 python .\scripts\build_windows.py --clean
 ```
 
 Build output:
-- `./dist/StickerHub`
 
-If you hit `WinError 5` (`Access is denied`):
-- close any running app from `dist\StickerHub`
-- rerun as Administrator
-- check antivirus locks on `dist` / `build`
+- `dist\StickerHub`
+- Release artifact: `StickerHub-win64.zip` (recommended for users)
 
-Admin rerun example:
+If you see `WinError 5` during build, close running app instances from `dist\StickerHub` and retry.
 
-```powershell
-Start-Process -Verb RunAs -FilePath python -ArgumentList ".\scripts\build_windows.py --clean"
-```
+## Import Notes
 
-## Import From UI
-
-1. Click `Import URL`.
-2. Paste a direct image URL or a sticker pack/page URL.
-3. Choose category (default `Imported`).
-4. Confirm import; grid refreshes immediately.
-
-Notes:
-- Direct media URLs (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`) give best results.
-- Page URLs are parsed for candidate image links.
 - Duplicate URLs are skipped automatically.
-- Imported stickers are stored without display names.
-- Use `Upgrade URLs` to rewrite existing `stickers.json` entries to preferred full-size URL variants and clean duplicates.
-
-## Copy Behavior
-
-- `Auto (Compat)`: uses GIF for animated stickers and original format for static stickers.
-- `Original`: keeps downloaded format.
-- `GIF` / `WebP`: attempts conversion before copy.
-- If conversion fails, app falls back to original format automatically.
-
-## Project Structure
-
-- `main.py` - entry point
-- `scripts/build_windows.py` - Windows build helper
-- `sticker_hub/app.py` - app bootstrap
-- `sticker_hub/paths.py` - runtime data path helpers
-- `sticker_hub/theme.py` - dark theme stylesheet
-- `sticker_hub/models/sticker_models.py` - models + JSON load/write + dedupe
-- `sticker_hub/services/cache_service.py` - cache + send-copy handling
-- `sticker_hub/services/downloader.py` - threaded download orchestration
-- `sticker_hub/workers/download_worker.py` - worker job for fetch/thumbnail
-- `sticker_hub/ui/main_window.py` - main UI shell
-- `sticker_hub/ui/sticker_grid.py` - responsive grid widget
-- `sticker_hub/ui/sticker_card.py` - interactive sticker card
-- `sticker_hub/utils/image_utils.py` - image format/animation helpers
-- `tests/smoke_test.py` - non-GUI smoke test
+- `Upgrade URLs` can improve existing entries to preferred full-size links.
+- Imported stickers are saved without forced display names.
 
 ## Smoke Test
 
