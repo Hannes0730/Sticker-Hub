@@ -130,7 +130,26 @@ def normalize_url_for_dedupe(url: str) -> str:
     filtered_query = []
     for key, value in parse_qsl(parsed.query, keep_blank_values=True):
         lowered = key.lower()
-        if lowered.startswith("utm_") or lowered in {"fbclid", "gclid", "igshid", "ref", "source"}:
+        if lowered.startswith("utm_") or lowered in {
+            "fbclid",
+            "gclid",
+            "igshid",
+            "ref",
+            "source",
+            # Drop transform-only params so different thumbnail URLs dedupe.
+            "w",
+            "h",
+            "width",
+            "height",
+            "size",
+            "s",
+            "thumbnail",
+            "thumb",
+            "quality",
+            "q",
+            "fit",
+            "crop",
+        }:
             continue
         filtered_query.append((key, value))
 
