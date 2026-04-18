@@ -38,7 +38,8 @@ def resolve_sticker_urls(source_url: str, timeout_seconds: int = 20, max_results
         return [preferred_image_url(response.url or source_url)]
 
     html = response.text
-    return _resolve_via_providers(source_url, html, max_results=max_results)
+    resolved = _resolve_via_providers(source_url, html, max_results=max_results)
+    return _dedupe_urls(resolved, max_results=max_results)
 
 
 def _resolve_via_providers(source_url: str, html: str, max_results: int) -> list[str]:
@@ -51,6 +52,21 @@ def _resolve_via_providers(source_url: str, html: str, max_results: int) -> list
             return resolved
 
     return []
+
+
+def _dedupe_urls(urls: list[str], max_results: int) -> list[str]:
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for url in urls:
+        preferred = preferred_image_url(url)
+        normalized = normalize_url_for_dedupe(preferred)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(preferred)
+        if len(deduped) >= max_results:
+            break
+    return deduped
 
 
 def upgrade_sticker_urls_file(path: Path) -> dict[str, int]:
