@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.14.1 (2026-04-18)
+
+### Bug Fixes
+
+- Improve installer launch process with error handling and retry logic
+  ([`5309764`](https://github.com/Hannes0730/Sticker-Hub/commit/5309764679bf8cd2872711d961fad75e0247e3d0))
+
+
 ## v1.14.0 (2026-04-18)
 
 ### Bug Fixes
