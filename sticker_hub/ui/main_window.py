@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QMimeData, QSettings, QSignalBlocker, Qt, QTimer, QUrl
-from PySide6.QtGui import QDesktopServices, QFont, QPixmap
+from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -39,6 +39,7 @@ from sticker_hub.services import (
     StickerDownloadManager,
     check_for_update,
     resolve_sticker_urls,
+    start_in_app_update,
     upgrade_sticker_urls_file,
 )
 from sticker_hub.ui.sticker_card import StickerCard
@@ -749,9 +750,9 @@ class MainWindow(QWidget):
         dialog.setIcon(QMessageBox.Icon.Information)
         dialog.setWindowTitle("Update available")
         dialog.setText(f"Version v{result.latest_version} is available.")
-        dialog.setInformativeText("Download the new version now?")
+        dialog.setInformativeText("Install the new version now? The app will close and restart.")
 
-        download_button = dialog.addButton("Download", QMessageBox.ButtonRole.AcceptRole)
+        download_button = dialog.addButton("Install Now", QMessageBox.ButtonRole.AcceptRole)
         skip_button = dialog.addButton("Skip this version", QMessageBox.ButtonRole.DestructiveRole)
         dialog.addButton("Later", QMessageBox.ButtonRole.RejectRole)
         dialog.exec()
@@ -767,13 +768,38 @@ class MainWindow(QWidget):
                 self.status.setText("Update found, but no Windows download asset is available.")
                 return
 
-            opened = QDesktopServices.openUrl(QUrl(result.download_url))
-            if not opened:
-                QMessageBox.warning(self, "Update available", "Could not open the download link.")
-                self.status.setText("Could not open update download link.")
+            self.update_button.setEnabled(False)
+            self.status.setText("Downloading update...")
+
+            def _progress(downloaded: int, total: int | None) -> None:
+                if total and total > 0:
+                    percent = int((downloaded / total) * 100)
+                    self.status.setText(f"Downloading update... {percent}%")
+                else:
+                    mb = downloaded / (1024 * 1024)
+                    self.status.setText(f"Downloading update... {mb:.1f} MB")
+                QApplication.processEvents()
+
+            install_result = start_in_app_update(
+                result.download_url,
+                result.asset_name,
+                result.latest_version,
+                progress_callback=_progress,
+            )
+            self.update_button.setEnabled(True)
+
+            if not install_result.started:
+                QMessageBox.warning(self, "Update failed", install_result.message)
+                self.status.setText("Update failed.")
                 return
 
-            self.status.setText(f"Opening download: {result.asset_name or result.latest_version}")
+            self.status.setText(install_result.message)
+            QMessageBox.information(
+                self,
+                "Installing update",
+                "Update downloaded. Sticker Hub will now close and relaunch automatically.",
+            )
+            QTimer.singleShot(180, QApplication.instance().quit)
             return
 
         if clicked == skip_button:
