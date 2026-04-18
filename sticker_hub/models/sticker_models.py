@@ -101,10 +101,10 @@ def append_sticker_to_json(
     pack_name: str = "",
     pack_url: str = "",
 ) -> bool:
-    normalized_category = category.strip() or "Imported"
+    normalized_category = _to_title_case(category.strip()) or "Imported"
     normalized_url = image_url.strip()
-    normalized_name = name.strip()
-    normalized_pack_name = pack_name.strip()
+    normalized_name = _to_title_case(name.strip())
+    normalized_pack_name = _to_title_case(pack_name.strip())
     normalized_pack_url = pack_url.strip()
 
     if not normalized_url:
@@ -308,5 +308,11 @@ def _normalize_url_for_dedupe(url: str) -> str:
             "",
         )
     )
+
+
+def _to_title_case(value: str) -> str:
+    if not value:
+        return ""
+    return " ".join(part.capitalize() for part in value.split())
 
 
