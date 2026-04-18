@@ -6,6 +6,7 @@
   <img alt="License" src="https://img.shields.io/github/license/Hannes0730/Sticker-Hub" />
   <img alt="Latest Release" src="https://img.shields.io/github/v/release/Hannes0730/Sticker-Hub?display_name=tag" />
   <img alt="Open Issues" src="https://img.shields.io/github/issues/Hannes0730/Sticker-Hub" />
+  <img alt="Total Downloads" src="https://img.shields.io/github/downloads/Hannes0730/Sticker-Hub/total" />
 </p>
 
 <p align="center">
