@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v1.9.0 (2026-04-18)
+
+### Features
+
+- Add delete functionality for sticker categories and packs
+  ([`3dccd8d`](https://github.com/Hannes0730/Sticker-Hub/commit/3dccd8d0d018b7e5e91f2f5ceb167c67c9f8f5a1))
+
+- Add delete functionality for sticker categories and packs from JSON
+  ([`451334a`](https://github.com/Hannes0730/Sticker-Hub/commit/451334a4d0432c1bc7b1d4a82effa13755de9ad9))
+
+- Add delete functionality for sticker packs and categories
+  ([`d350096`](https://github.com/Hannes0730/Sticker-Hub/commit/d3500967aa33cd5da55df012910dfadd36ee17ee))
+
+
 ## v1.8.0 (2026-04-18)
 
 ### Bug Fixes
