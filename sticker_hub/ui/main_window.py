@@ -3,8 +3,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QMimeData, QSignalBlocker, Qt, QTimer, QUrl
-from PySide6.QtGui import QFont, QPixmap
+from PySide6.QtCore import QEvent, QMimeData, QSettings, QSignalBlocker, Qt, QTimer, QUrl
+from PySide6.QtGui import QDesktopServices, QFont, QPixmap
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -34,7 +34,13 @@ from sticker_hub.models import (
     delete_pack_from_json,
     load_catalog_from_json,
 )
-from sticker_hub.services import StickerCache, StickerDownloadManager, resolve_sticker_urls, upgrade_sticker_urls_file
+from sticker_hub.services import (
+    StickerCache,
+    StickerDownloadManager,
+    check_for_update,
+    resolve_sticker_urls,
+    upgrade_sticker_urls_file,
+)
 from sticker_hub.ui.sticker_card import StickerCard
 from sticker_hub.ui.sticker_grid import StickerGrid
 from sticker_hub.utils import build_thumbnail
@@ -60,6 +66,8 @@ class MainWindow(QWidget):
         self.sticker_file = sticker_file
         self.app_version = app_version.strip() or "dev"
         self.downloader = StickerDownloadManager(cache)
+        self._settings = QSettings("StickerHub", "StickerHub")
+        self._skipped_update_version = str(self._settings.value("updates/skipped_version", "") or "").strip()
 
         self.favorites: set[str] = set()
         self.recent: list[str] = []
@@ -119,6 +127,10 @@ class MainWindow(QWidget):
         self.upgrade_urls_button.setObjectName("ImportButton")
         self.upgrade_urls_button.setToolTip("Promote thumbnail-like links to preferred full-size URLs.")
 
+        self.update_button = QPushButton("Check Updates")
+        self.update_button.setObjectName("ImportButton")
+        self.update_button.setToolTip("Check if a newer Sticker Hub version is available.")
+
         self.quality_mode = QComboBox()
         self.quality_mode.setObjectName("QualityModeCombo")
         self.quality_mode.addItem("Preview: Performance", "performance")
@@ -156,6 +168,7 @@ class MainWindow(QWidget):
         top_bar.addWidget(self.copy_format)
         top_bar.addWidget(self.import_button)
         top_bar.addWidget(self.upgrade_urls_button)
+        top_bar.addWidget(self.update_button)
         top_bar.addWidget(self.version_badge)
 
         root.addWidget(self.sidebar)
@@ -177,6 +190,7 @@ class MainWindow(QWidget):
         self.quality_mode.currentIndexChanged.connect(self._on_preview_quality_changed)
         self.import_button.clicked.connect(self._open_import_dialog)
         self.upgrade_urls_button.clicked.connect(self._upgrade_existing_urls)
+        self.update_button.clicked.connect(lambda: self._check_for_updates(manual=True))
         self.downloader.sticker_ready.connect(self._on_sticker_ready)
         self.downloader.sticker_failed.connect(self._on_sticker_failed)
         self.scroll.verticalScrollBar().valueChanged.connect(lambda _: self._schedule_animation_budget_update())
@@ -184,6 +198,7 @@ class MainWindow(QWidget):
 
         self._apply_filters()
         self._queue_visible_downloads()
+        QTimer.singleShot(1400, lambda: self._check_for_updates(manual=False))
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
@@ -704,6 +719,70 @@ class MainWindow(QWidget):
         finally:
             self.import_button.setEnabled(True)
             self.upgrade_urls_button.setEnabled(True)
+
+    def _check_for_updates(self, manual: bool) -> None:
+        self.update_button.setEnabled(False)
+        if manual:
+            self.status.setText("Checking for updates...")
+
+        try:
+            result = check_for_update(self.app_version)
+        finally:
+            self.update_button.setEnabled(True)
+
+        if result.error:
+            if manual:
+                QMessageBox.warning(self, "Update Check", result.error)
+            self.status.setText("Update check failed.")
+            return
+
+        if not result.update_available:
+            if manual:
+                QMessageBox.information(self, "Update Check", "You are already on the latest version.")
+            self.status.setText("You are up to date.")
+            return
+
+        if not manual and result.latest_version == self._skipped_update_version:
+            return
+
+        dialog = QMessageBox(self)
+        dialog.setIcon(QMessageBox.Icon.Information)
+        dialog.setWindowTitle("Update available")
+        dialog.setText(f"Version v{result.latest_version} is available.")
+        dialog.setInformativeText("Download the new version now?")
+
+        download_button = dialog.addButton("Download", QMessageBox.ButtonRole.AcceptRole)
+        skip_button = dialog.addButton("Skip this version", QMessageBox.ButtonRole.DestructiveRole)
+        dialog.addButton("Later", QMessageBox.ButtonRole.RejectRole)
+        dialog.exec()
+
+        clicked = dialog.clickedButton()
+        if clicked == download_button:
+            if not result.download_url:
+                QMessageBox.warning(
+                    self,
+                    "Update available",
+                    "No downloadable Windows asset was found for the latest release.",
+                )
+                self.status.setText("Update found, but no Windows download asset is available.")
+                return
+
+            opened = QDesktopServices.openUrl(QUrl(result.download_url))
+            if not opened:
+                QMessageBox.warning(self, "Update available", "Could not open the download link.")
+                self.status.setText("Could not open update download link.")
+                return
+
+            self.status.setText(f"Opening download: {result.asset_name or result.latest_version}")
+            return
+
+        if clicked == skip_button:
+            self._skipped_update_version = result.latest_version
+            self._settings.setValue("updates/skipped_version", self._skipped_update_version)
+            self.status.setText(f"Skipped update v{result.latest_version}.")
+            return
+
+        self.status.setText("Update postponed.")
 
     def _reload_catalog(self) -> None:
         self.catalog = load_catalog_from_json(self.sticker_file)
