@@ -32,6 +32,10 @@ def get_stickers_json_path() -> Path:
     return get_data_dir() / "stickers.json"
 
 
+def get_catalog_db_path() -> Path:
+    return get_data_dir() / "stickers.db"
+
+
 def ensure_stickers_json(default_source: Path | None = None) -> Path:
     target = get_stickers_json_path()
     target.parent.mkdir(parents=True, exist_ok=True)
