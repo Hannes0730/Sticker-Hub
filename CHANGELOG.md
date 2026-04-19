@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.16.0 (2026-04-19)
+
+### Features
+
+- Add main script for manually migrating to SQLite database
+  ([`41e8629`](https://github.com/Hannes0730/Sticker-Hub/commit/41e862951a1983f22239e797c8def4b20fd2ac5f))
+
+
 ## v1.15.0 (2026-04-19)
 
 ### Documentation
