@@ -32,6 +32,7 @@ from sticker_hub.models import (
     append_sticker_to_json,
     delete_category_from_json,
     delete_pack_from_json,
+    get_catalog_db_status,
     load_catalog_from_json,
 )
 from sticker_hub.services import (
@@ -199,7 +200,16 @@ class MainWindow(QWidget):
 
         self._apply_filters()
         self._queue_visible_downloads()
+        QTimer.singleShot(20, self._show_catalog_db_status)
         QTimer.singleShot(1400, lambda: self._check_for_updates(manual=False))
+
+    def _show_catalog_db_status(self) -> None:
+        status = get_catalog_db_status(self.sticker_file)
+        if not bool(status.get("exists")):
+            return
+
+        table_count = int(status.get("table_count", 0) or 0)
+        self.status.setText(f"Catalog DB: ready ({table_count} tables)")
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
