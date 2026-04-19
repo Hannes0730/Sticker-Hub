@@ -2,6 +2,28 @@
 
 <!-- version list -->
 
+## v1.15.0 (2026-04-19)
+
+### Documentation
+
+- Update README for SQLite migration and data locations
+  ([`c1b3f76`](https://github.com/Hannes0730/Sticker-Hub/commit/c1b3f765cbbf4c539476966bc2b49ef6bbce521c))
+
+### Features
+
+- Add catalog database status display in main window
+  ([`a55e8d7`](https://github.com/Hannes0730/Sticker-Hub/commit/a55e8d7558daac1aa9f080978fa89f67e427c34b))
+
+- Add function to retrieve catalog database path
+  ([`6a4c5eb`](https://github.com/Hannes0730/Sticker-Hub/commit/6a4c5eb7766ca6ed835b2e5d44476bd5f6575525))
+
+- Add get_catalog_db_status function to module exports
+  ([`b7052e9`](https://github.com/Hannes0730/Sticker-Hub/commit/b7052e97a3226b23a4b5dad53412c8f230bc1ded))
+
+- Migrate catalog loading to SQLite database
+  ([`5e5d8ae`](https://github.com/Hannes0730/Sticker-Hub/commit/5e5d8ae4eb7a2ce3ed74201231b03af9472bb172))
+
+
 ## v1.14.1 (2026-04-18)
 
 ### Bug Fixes
