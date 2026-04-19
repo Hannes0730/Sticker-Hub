@@ -105,12 +105,29 @@ Stickers Hub supports both legacy flat format and nested pack format.
 
 ## Data Locations
 
-- Persistent catalog:
+- Persistent catalog (source of truth):
+  - `C:\Users\<you>\Documents\StickerHub\stickers.db`
+- JSON convenience cache (auto-regenerated):
   - `C:\Users\<you>\Documents\StickerHub\stickers.json`
 - Download/cache files (safe to clear):
   - `%TEMP%\StickerHub`
 
-Clearing `%TEMP%` removes cached files only. Imported sticker URLs remain in `Documents`.
+Clearing `%TEMP%` removes cached files only. Catalog data remains in `Documents`.
+
+## SQLite Migration
+`NOTE: This change was made to adopt AI tagging for easy searching which will be implemented soon... hopefully...`
+
+Stickers Hub now migrates legacy JSON data into SQLite automatically on first load.
+
+- Writes are DB-only after migration.
+- Normalized tables are the source of truth (`packs`, `stickers`, `tags`, `sticker_tags`).
+- `stickers.json` is kept as a convenience cache for compatibility/inspection.
+
+Manual migration helper:
+
+```powershell
+python .\scripts\migrate_to_sqlite.py
+```
 
 ## Run From Source
 
@@ -142,3 +159,10 @@ If you hit `WinError 5`, close running app instances from `dist\StickerHub` and 
 ```powershell
 python .\tests\smoke_test.py
 ```
+
+SQLite migration tests:
+
+```powershell
+python -m unittest tests.test_catalog_sqlite
+```
+
